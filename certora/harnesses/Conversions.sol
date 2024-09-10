@@ -6,7 +6,7 @@ import { BalanceDeltaLibrary, BalanceDelta } from "@uniswap/v4-core/src/types/Ba
 import { PositionConfig } from "src/libraries/PositionConfig.sol";
 import { PoolKey } from "@uniswap/v4-core/src/types/PoolKey.sol";
 import { PoolId } from "@uniswap/v4-core/src/types/PoolId.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import { BalanceDelta } from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 
 contract Conversions {
     function hashConfigElements(
