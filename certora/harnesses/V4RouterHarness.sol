@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
-import { V4Router } from "src/V4Router.sol";
-import { ReentrancyLock } from "src/base/ReentrancyLock.sol";
-import { IV4Router } from "src/interfaces/IV4Router.sol";
-import { IPoolManager } from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import { Currency, CurrencyLibrary } from "@uniswap/v4-core/src/types/Currency.sol";
-import { ERC20 } from "solmate/src/tokens/ERC20.sol";
-import { SafeTransferLib } from "solmate/src/utils/SafeTransferLib.sol";
-import { BipsLibrary } from "@uniswap/v4-core/src/libraries/BipsLibrary.sol";
-
+import {V4Router} from "src/V4Router.sol";
+import {ReentrancyLock} from "src/base/ReentrancyLock.sol";
+import {IV4Router} from "src/interfaces/IV4Router.sol";
+import {ERC20} from "solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
+import {PositionConfig} from "src/libraries/PositionConfig.sol";
+import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
+import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
+import {BipsLibrary} from "@uniswap/v4-core/src/libraries/BipsLibrary.sol";
 import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
 
 contract V4RouterHarness is V4Router, ReentrancyLock {
@@ -18,10 +18,6 @@ contract V4RouterHarness is V4Router, ReentrancyLock {
     using BipsLibrary for uint256;
 
     constructor(IPoolManager _poolManager) V4Router(_poolManager) {}
-
-    // @todo _handleAction() coverage
-    // override handlAction as its complex and just calls other functions in the contract. Can remove if wanted to prove specifics about where its called.
-    function _handleAction(uint256 action, bytes calldata params) internal override {}
 
     function swapExactIn(IV4Router.ExactInputParams calldata params) external payable isNotLocked {
         // uint256 action = Actions.SWAP_EXACT_IN;
@@ -79,11 +75,11 @@ contract V4RouterHarness is V4Router, ReentrancyLock {
     }
 
     // Override from DeltaResolver.sol
-    function _pay(Currency token, address payer, uint256 amount) internal override {
+    function _pay(Currency currency, address payer, uint256 amount) internal override {
         if (payer == address(this)) {
-            token.transfer(address(poolManager), amount);
+            currency.transfer(address(poolManager), amount);
         } else {
-            ERC20(Currency.unwrap(token)).safeTransferFrom(payer, address(poolManager), amount);
+            ERC20(Currency.unwrap(currency)).transferFrom(payer, address(poolManager), amount);
         }
     }
 
