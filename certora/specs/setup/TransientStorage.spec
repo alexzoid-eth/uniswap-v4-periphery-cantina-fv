@@ -1,5 +1,5 @@
 //
-// CurrencyDelta
+// PoolManager.CurrencyDelta
 //
 
 methods {
@@ -22,7 +22,7 @@ function computeSlotCVL(address target, address currency) returns bytes32 {
 }
 
 //
-// CurrencyReserves
+// PoolManager.CurrencyReserves
 //
 
 definition CURRENCY_SLOT() returns uint256 = 0x27e098c505d44ec3574004bca052aabf76bd35004c182099d8c575fb238593b9;
@@ -34,7 +34,7 @@ persistent ghost mathint ghostSyncedReserves {
 }
 
 //
-// Lock
+// PoolManager.Lock
 //
 
 definition IS_UNLOCKED_SLOT() returns uint256 = 0xc090fc4683624cfc3884e9d8de5eca132f2d0ec062aff75d43c0465d5ceeab23;
@@ -42,7 +42,7 @@ definition IS_UNLOCKED_SLOT() returns uint256 = 0xc090fc4683624cfc3884e9d8de5eca
 persistent ghost bool ghostLock;
 
 //
-// NonzeroDeltaCount
+// PoolManager.NonzeroDeltaCount
 //
 
 definition NONZERO_DELTA_COUNT_SLOT() returns uint256 = 0x7d4b3164c6e45b97e7d87b7125a44c5828d005af88f9d751cfd78729c5d99a0b;
@@ -52,9 +52,17 @@ persistent ghost mathint ghostNonzeroDeltaCount {
 }
 
 //
+// PositionManager.Locker
+//
+
+definition LOCKED_BY_SLOT() returns uint256 = 0x0aedd6bde10e3aa2adec092b02a3e3e805795516cda41f27aa145b8f300af87a;
+
+persistent ghost address ghostLocker;
+
+//
 // Global hooks
 //
-/*
+
 hook ALL_TSTORE(uint256 addr, uint256 val) {
     if(executingContract == _PoolManager) {
         if(to_bytes32(addr) == _ghostLastSlot) {
@@ -68,6 +76,10 @@ hook ALL_TSTORE(uint256 addr, uint256 val) {
         } else if (addr == NONZERO_DELTA_COUNT_SLOT()) {
             ghostNonzeroDeltaCount = val;
         }  
+    } else { // PositionManager
+        if(addr == LOCKED_BY_SLOT()) {
+            ghostLocker = require_address(to_bytes32(val));
+        }
     }
 }
 
@@ -84,5 +96,9 @@ hook ALL_TLOAD(uint256 addr) uint256 val {
         } else if (addr == NONZERO_DELTA_COUNT_SLOT()) {
             require(require_uint256(ghostNonzeroDeltaCount) == val);
         } 
+    } else { // PositionManager
+        if(addr == LOCKED_BY_SLOT()) {
+            require(ghostLocker == require_address(to_bytes32(val)));
+        }
     }
-}*/
+}

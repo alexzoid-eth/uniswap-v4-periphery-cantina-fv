@@ -10,14 +10,14 @@ methods {
     function CurrencyLibrary.balanceOf(PoolManager.Currency currency, address owner) internal returns (uint256) with (env e) 
         => balanceOfCVL(e, currency, owner);   
 
-    // TestERC20
+    // IERC20Minimal
     function _.transferFrom(address sender, address recipient, uint256 amount) external with (env e)
         => transferFromCVL(e, calledContract, sender, recipient, amount) expect bool;
 }
 
 function transferCVL(env e, address currency, address to, uint256 amount) {
 
-    requireValidCurrencyAddress(currency);
+    requireValidCurrencyAddressCVL(currency);
 
     if(currency == 0) {
         _HelperCVL.transferEther(e, to, amount);
@@ -32,7 +32,7 @@ function transferCVL(env e, address currency, address to, uint256 amount) {
 
 function balanceOfSelfCVL(env e, address currency, address owner) returns uint256 {
 
-    requireValidCurrencyAddress(currency);
+    requireValidCurrencyAddressCVL(currency);
 
     uint256 balance;
 
@@ -51,7 +51,7 @@ function balanceOfSelfCVL(env e, address currency, address owner) returns uint25
 
 function balanceOfCVL(env e, address currency, address owner) returns uint256 {
 
-    requireValidCurrencyAddress(currency);
+    requireValidCurrencyAddressCVL(currency);
 
     uint256 balance;
 
@@ -70,7 +70,7 @@ function balanceOfCVL(env e, address currency, address owner) returns uint256 {
 
 function transferFromCVL(env e, address currency, address sender, address recipient, uint256 amount) returns bool {
 
-    requireValidCurrencyAddress(currency);
+    requireValidCurrencyAddressCVL(currency);
 
     if(currency == 0) {
         assert(false, "currency could not be native here");

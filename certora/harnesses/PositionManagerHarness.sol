@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.26;
 
-import {PositionManager, IPoolManager, IAllowanceTransfer} from "src/PositionManager.sol";
-import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
+import {PositionManager, PositionInfo, IPoolManager, IAllowanceTransfer} from "src/PositionManager.sol";
+import {Currency, CurrencyLibrary} from "@uniswap/v4-core/src/types/Currency.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+import {SignatureVerification} from "permit2/src/libraries/SignatureVerification.sol";
 
 contract PositionManagerHarness is PositionManager {
 

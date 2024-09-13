@@ -16,10 +16,12 @@ methods {
 
     // External functions
     //  - assume valid pool key inside all external functions except initialize()
-    //  - assume hookData length is zero as we don't need 
     //  - assume currency can be address(0) - native, ERC20A, ERC20B or ERC20C
+
+    // Complexity limitations
     //  - assume all pools are NATIVE/ERC20B or ERC20A/ERC20B
-    
+    //  - assume hookData length is zero as we don't need 
+
     function _PoolManager.modifyLiquidity(
         PoolManager.PoolKey key, IPoolManager.ModifyLiquidityParams params, bytes hookData
     ) external returns (PoolManager.BalanceDelta, PoolManager.BalanceDelta) with (env e) 
@@ -125,16 +127,16 @@ methods {
 
 // Require valid input parameters of tested functions
 
-function requireValidEnv(env e) {
+function requireValidEnvCVL(env e) {
     require(e.msg.sender != 0);
     require(e.block.timestamp != 0);
 }
 
-function requireValidCurrencyAddress(address currency) {
+function requireValidCurrencyAddressCVL(address currency) {
     require(currency == 0 || currency == _ERC20A || currency == _ERC20B || currency == _ERC20C);
 }
 
-function requireValidCurrency(PoolManager.Currency currency) {
+function requireValidCurrencyCVL(PoolManager.Currency currency) {
     require(currency == 0 || currency == _ERC20A || currency == _ERC20B || currency == _ERC20C);
 }
 
@@ -147,6 +149,12 @@ function requireValidKeyCVL(PoolManager.PoolKey poolKey) {
     );
 }
 
+function requireTicksLimitationCVL(IPoolManager.ModifyLiquidityParams params) {
+    require(params.tickLower < params.tickUpper);
+    require(params.tickLower >= CUSTOM_TICK_MIN() && params.tickLower <= CUSTOM_TICK_MAX());
+    require(params.tickUpper >= CUSTOM_TICK_MIN() && params.tickUpper <= CUSTOM_TICK_MAX());
+}
+
 // Summarization for external functions 
 
 function modifyLiquidityCLV(
@@ -154,7 +162,7 @@ function modifyLiquidityCLV(
     ) returns (PoolManager.BalanceDelta, PoolManager.BalanceDelta) {
     
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     // Assume pool was initialized with valid pool key
     requireValidKeyCVL(key);
@@ -173,7 +181,7 @@ function swapCVL(
     ) returns PoolManager.BalanceDelta {
     
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     // Assume pool was initialized with valid pool key
     requireValidKeyCVL(key);
@@ -189,7 +197,7 @@ function donateCVL(
     ) returns PoolManager.BalanceDelta {
 
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     // Assume pool was initialized with valid pool key
     requireValidKeyCVL(key);
@@ -203,10 +211,10 @@ function donateCVL(
 function syncCVL(env e, PoolManager.Currency currency) {
 
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     // Assume only supported in this environment currencies are passed
-    requireValidCurrency(currency);
+    requireValidCurrencyCVL(currency);
 
     _PoolManager.sync(e, currency);
 }
@@ -214,10 +222,10 @@ function syncCVL(env e, PoolManager.Currency currency) {
 function takeCVL(env e, PoolManager.Currency currency, address to, uint256 amount) {
 
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     // Assume only supported in this environment currencies are passed
-    requireValidCurrency(currency);
+    requireValidCurrencyCVL(currency);
 
     _PoolManager.take(e, currency, to, amount);
 }
@@ -225,7 +233,7 @@ function takeCVL(env e, PoolManager.Currency currency, address to, uint256 amoun
 function settleCVL(env e) returns uint256 {
 
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     return _PoolManager.settle(e);
 }
@@ -233,7 +241,7 @@ function settleCVL(env e) returns uint256 {
 function settleForCVL(env e, address recipient) returns uint256 {
 
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     return _PoolManager.settleFor(e, recipient);
 }
@@ -241,10 +249,10 @@ function settleForCVL(env e, address recipient) returns uint256 {
 function clearCVL(env e, PoolManager.Currency currency, uint256 amount) {
 
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     // Assume only supported in this environment currencies are passed
-    requireValidCurrency(currency);
+    requireValidCurrencyCVL(currency);
 
     _PoolManager.clear(e, currency, amount);
 }
@@ -252,10 +260,10 @@ function clearCVL(env e, PoolManager.Currency currency, uint256 amount) {
 function mintCVL(env e, address to, uint256 id, uint256 amount) {
 
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     // Assume only supported in this environment currencies are passed
-    requireValidCurrency(_HelperCVL.fromId(id));
+    requireValidCurrencyCVL(_HelperCVL.fromId(id));
 
     _PoolManager.mint(e, to, id, amount);
 }
@@ -263,10 +271,10 @@ function mintCVL(env e, address to, uint256 id, uint256 amount) {
 function burnCVL(env e, address from, uint256 id, uint256 amount) {
 
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     // Assume only supported in this environment currencies are passed
-    requireValidCurrency(_HelperCVL.fromId(id));
+    requireValidCurrencyCVL(_HelperCVL.fromId(id));
 
     _PoolManager.burn(e, from, id, amount);
 }
@@ -274,7 +282,7 @@ function burnCVL(env e, address from, uint256 id, uint256 amount) {
 function updateDynamicLPFeeCVL(env e, PoolManager.PoolKey key, uint24 newDynamicLPFee) {
 
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     // Assume pool was initialized with valid pool key
     requireValidKeyCVL(key);
@@ -285,7 +293,7 @@ function updateDynamicLPFeeCVL(env e, PoolManager.PoolKey key, uint24 newDynamic
 function setProtocolFeeCVL(env e, PoolManager.PoolKey key, uint24 newProtocolFee) {
 
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     // Assume pool was initialized with valid pool key
     requireValidKeyCVL(key);
@@ -296,10 +304,10 @@ function setProtocolFeeCVL(env e, PoolManager.PoolKey key, uint24 newProtocolFee
 function collectProtocolFeesCVL(env e, address recipient, PoolManager.Currency currency, uint256 amount) returns uint256 {
 
     // Safe assumptions about environment
-    requireValidEnv(e);
+    requireValidEnvCVL(e);
 
     // Assume only supported in this environment currencies are passed
-    requireValidCurrency(currency);
+    requireValidCurrencyCVL(currency);
 
     return _PoolManager.collectProtocolFees(e, recipient, currency, amount);
 }
@@ -529,9 +537,7 @@ hook Sstore _PoolManager._pools[KEY PoolManager.PoolId i].positions[KEY bytes32 
     ghostPoolsPositionsFeeGrowthInside1LastX128[i][j] = val;
 }
 
-//
 // Ghost copy of `mapping(Currency currency => uint256 amount) public protocolFeesAccrued;`
-//
 
 persistent ghost mapping (address => mathint) ghostProtocolFeesAccrued {
     axiom forall PoolManager.Currency i. ghostProtocolFeesAccrued[i] >= 0 && ghostProtocolFeesAccrued[i] <= max_uint256;
@@ -545,9 +551,7 @@ hook Sstore _PoolManager.protocolFeesAccrued[KEY PoolManager.Currency i] uint256
     ghostProtocolFeesAccrued[i] = val;
 }
 
-//
 // Ghost copy of `IProtocolFeeController public protocolFeeController`
-//
 
 persistent ghost address ghostProtocolFeeController;
 
@@ -559,9 +563,7 @@ hook Sstore _PoolManager.protocolFeeController address val {
     ghostProtocolFeeController = val;
 }
 
-//
 // Ghost copy of `mapping(address owner => mapping(address operator => bool isOperator)) public isOperator;`
-//
 
 persistent ghost mapping (address => mapping(address => bool)) ghostERC6909IsOperator;
 
@@ -573,9 +575,7 @@ hook Sstore _PoolManager.isOperator[KEY address owner][KEY address operator] boo
     ghostERC6909IsOperator[owner][operator] = val;
 }
 
-//
 // Ghost copy of `mapping(address owner => mapping(uint256 id => uint256 balance)) public balanceOf;`
-//
 
 persistent ghost mapping (address => mapping(uint256 => mathint)) ghostERC6909BalanceOf {
     axiom forall address owner. forall uint256 id. 
@@ -590,9 +590,7 @@ hook Sstore _PoolManager.balanceOf[KEY address owner][KEY uint256 id] uint256 va
     ghostERC6909BalanceOf[owner][id] = val;
 }
 
-//
 // Ghost copy of `mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount))) public allowance;`
-//
 
 persistent ghost mapping (address => mapping(address => mapping(uint256 => mathint))) ghostERC6909Allowance {
     axiom forall address owner. forall address spender. forall uint256 id. 
