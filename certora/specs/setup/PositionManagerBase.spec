@@ -14,7 +14,7 @@ methods {
     // Removed external functions
     // - modifyLiquidities(), modifyLiquiditiesWithoutUnlock() and unlockCallback() not needed as _handleAction is 
     //  no-op and summarizing unlock here would have no effect
-    // - multicall() temporary removed
+    // - multicall() removed
 
     function _PositionManager.modifyLiquidities(bytes unlockData, uint256 deadline) external => NONDET DELETE;
     function _PositionManager.modifyLiquiditiesWithoutUnlock(bytes actions, bytes[] params) external => NONDET DELETE;
