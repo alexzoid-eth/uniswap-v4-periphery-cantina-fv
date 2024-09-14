@@ -17,8 +17,6 @@ methods {
     // External functions
     //  - assume valid pool key inside all external functions except initialize()
     //  - assume currency can be address(0) - native, ERC20A, ERC20B or ERC20C
-
-    // Complexity limitations
     //  - assume all pools are NATIVE/ERC20B or ERC20A/ERC20B
     //  - assume hookData length is zero as we don't need 
 
@@ -72,7 +70,6 @@ methods {
     // - extsload()/exttload() leads to prover errors
     // - unlock() not needed as _handleAction is no-op and summarizing unlock here would have no effect
     // - setProtocolFeeController() not needed as protocol fee controller summarized as CVL mapping
-
     function _PoolManager.extsload(bytes32 slot) external returns (bytes32) => NONDET DELETE;
     function _PoolManager.extsload(bytes32 startSlot, uint256 nSlots) external returns (bytes32[]) => NONDET DELETE;
     function _PoolManager.extsload(bytes32[] slots) external returns (bytes32[]) => NONDET DELETE;
@@ -85,26 +82,6 @@ methods {
     // - use cvl mapping instead of external ProtocolFeeController contract
     function ProtocolFees._fetchProtocolFee(PoolManager.PoolKey memory key) internal returns (uint24)
         => fetchProtocolFeeCVL(key);
-
-    // FullMath
-    //  - summarize with CVL functions in order to reduce prover time
-    function FullMath.mulDiv(uint256 a, uint256 b, uint256 denominator) internal returns (uint256) 
-        => mulDivDownCVL(a,b,denominator);
-    function FullMath.mulDivRoundingUp(uint256 a, uint256 b, uint256 denominator) internal returns (uint256) 
-        => mulDivUpCVL(a,b,denominator);
-
-    // UnsafeMath
-    //  - summarize with CVL functions in order to reduce prover time
-    function UnsafeMath.divRoundingUp(uint256 x, uint256 y) internal returns (uint256) 
-        => divUpCVL(x, y);
-
-    // Hashing
-    //  - summarize with CVL functions in order to reduce prover time
-    function PoolIdLibrary.toId(PoolManager.PoolKey memory poolKey) internal returns (PoolManager.PoolId)
-        => poolKeyToPoolIdCVL(poolKey);
-    function Position.calculatePositionKey(
-        address owner, int24 tickLower, int24 tickUpper, bytes32 salt
-    ) internal returns (bytes32) => calculatePositionKeyCVL(owner, tickLower, tickUpper, salt);
 
     // SqrtPriceMath 
     //  - don't care about return values as too much complexity
@@ -120,7 +97,7 @@ methods {
     function TickMath.getSqrtPriceAtTick(int24 tick) internal returns (uint160)
         => NONDET;
     function TickMath.getTickAtSqrtPrice(uint160 sqrtPriceX96) internal returns (int24) 
-        => NONDET;
+        => getTickAtSqrtPriceCVL(sqrtPriceX96);
 }
 
 ///////////////////////////////////////// Functions ////////////////////////////////////////////
@@ -322,6 +299,18 @@ function fetchProtocolFeeCVL(PoolManager.PoolKey key) returns uint24 {
     return ghostPoolFees[poolKeyToPoolIdCVL(key)];
 }
 
+// TickMath
+
+function getTickAtSqrtPriceCVL(uint160 sqrtPriceX96) returns int24 {
+
+    int24 tick;
+
+    require(sqrtPriceX96 >= MIN_SQRT_PRICE() && sqrtPriceX96 < MAX_SQRT_PRICE());
+    require(_HelperCVL.getAbsTick(tick) <= MAX_TICK());
+
+    return tick;
+}
+
 ////////////////////////////////////////// Hooks //////////////////////////////////////////////
 
 //
@@ -334,7 +323,27 @@ persistent ghost mapping (bytes32 => uint256) ghostPoolsSlot0 {
     init_state axiom forall bytes32 id. ghostPoolsSlot0[id] == 0;
 }
 
-definition SLOT0_UNPACK_SQRT_PRICEX96(uint256 val) returns mathint 
+persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0SqrtPriceX96 {
+    init_state axiom forall bytes32 id. ghostPoolsSlot0SqrtPriceX96[id] == 0;
+}
+
+persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0Tick {
+    init_state axiom forall bytes32 id. ghostPoolsSlot0Tick[id] == 0;
+}
+
+persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0ProtocolFeeZeroForOne {
+    init_state axiom forall bytes32 id. ghostPoolsSlot0ProtocolFeeZeroForOne[id] == 0;
+}
+
+persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0ProtocolFeeOneForZero {
+    init_state axiom forall bytes32 id. ghostPoolsSlot0ProtocolFeeOneForZero[id] == 0;
+}
+
+persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0LpFee {
+    init_state axiom forall bytes32 id. ghostPoolsSlot0LpFee[id] == 0;
+}
+
+definition SLOT0_UNPACK_SQRT_PRICE_X96(uint256 val) returns mathint 
     = val & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 definition SLOT0_UNPACK_TICK(uint256 val) returns mathint 
     = (val >> 160) & 0xFFFFFF;
@@ -346,7 +355,7 @@ definition SLOT0_UNPACK_PROTOCOL_LP_FEE(uint256 val) returns mathint
     = (val >> 208) & 0xFFFFFF;
 
 function slot0SqrtPriceX96CVL(bytes32 poolId) returns mathint {
-    return SLOT0_UNPACK_SQRT_PRICEX96(ghostPoolsSlot0[poolId]);
+    return SLOT0_UNPACK_SQRT_PRICE_X96(ghostPoolsSlot0[poolId]);
 }
 
 function slot0TickCVL(bytes32 poolId) returns mathint {
@@ -368,10 +377,20 @@ function Slot0LpFeeCVL(bytes32 poolId) returns mathint {
 // Use `.(offset 0)` instead of `.slot0` to bypass bytes32 to uint256 conversion limitation 
 hook Sload uint256 val _PoolManager._pools[KEY PoolManager.PoolId i].(offset 0) {
     require(ghostPoolsSlot0[i] == val);
+    //require(ghostPoolsSlot0SqrtPriceX96[i] == slot0SqrtPriceX96CVL(i));
+    //require(ghostPoolsSlot0Tick[i] == slot0TickCVL(i));
+    //require(ghostPoolsSlot0ProtocolFeeZeroForOne[i] == slot0ProtocolFeeZeroForOneCVL(i));
+    //require(ghostPoolsSlot0ProtocolFeeOneForZero[i] == slot0ProtocolFeeOneForZeroCVL(i));
+    //require(ghostPoolsSlot0LpFee[i] == Slot0LpFeeCVL(i));
 } 
 
 hook Sstore _PoolManager._pools[KEY PoolManager.PoolId i].(offset 0) uint256 val {
     ghostPoolsSlot0[i] = val;
+    //ghostPoolsSlot0SqrtPriceX96[i] = slot0SqrtPriceX96CVL(i);
+    //ghostPoolsSlot0Tick[i] = slot0TickCVL(i);
+    //ghostPoolsSlot0ProtocolFeeZeroForOne[i] = slot0ProtocolFeeZeroForOneCVL(i);
+    //ghostPoolsSlot0ProtocolFeeOneForZero[i] = slot0ProtocolFeeOneForZeroCVL(i);
+    //ghostPoolsSlot0LpFee[i] = Slot0LpFeeCVL(i);
 }
 
 // _pools[].feeGrowthGlobal0X128

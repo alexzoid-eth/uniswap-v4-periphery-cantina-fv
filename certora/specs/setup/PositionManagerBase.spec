@@ -8,8 +8,8 @@ methods {
 
     // External functions
     //  - assume currency can be address(0) - native, ERC20A, ERC20B or ERC20C
-
-    function sweep(PoolManager.Currency currency, address to) external with (env e) => sweepCVL(e, currency, to);
+    function _PositionManager.sweep(PoolManager.Currency currency, address to) external with (env e) 
+        => sweepCVL(e, currency, to);
 
     // Removed external functions
     // - modifyLiquidities(), modifyLiquiditiesWithoutUnlock() and unlockCallback() not needed as _handleAction is 
@@ -35,11 +35,9 @@ methods {
     //  - don't care about call to ERC721TokenReceiver from safeTransfer()
     function _.onERC721Received(address, address, uint256, bytes) external => NONDET;
 
-    // ERC721Permit_v4
-    //  - don't care about result of signature check
-    //  - the .verify function checks the owner is non-0
-    function _.verify(bytes calldata signature, bytes32 hash, address claimedSigner) internal
-        => verifyCVL(claimedSigner) expect void;
+    // IERC1271
+    //  - the bytes4 magic value 0x1626ba7e
+    function _.isValidSignature(bytes32 hash, bytes signature) external => ALWAYS(0x1626ba7e);
 }
 
 ///////////////////////////////////////// Functions ////////////////////////////////////////////
@@ -53,10 +51,6 @@ function sweepCVL(env e, PoolManager.Currency currency, address to) {
     requireValidCurrencyCVL(currency);
 
     _PositionManager.sweep(e, currency, to);
-}
-
-function verifyCVL(address claimedSigner) {
-    assert(claimedSigner != 0, "invalid signature");
 }
 
 ////////////////////////////////////////// Hooks //////////////////////////////////////////////

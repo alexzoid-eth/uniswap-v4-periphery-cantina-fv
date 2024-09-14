@@ -12,6 +12,13 @@ methods {
     function _HelperCVL.amount1(HelperCVL.BalanceDelta) external returns (int128) envfree;
     function _HelperCVL.wrapToPoolId(bytes32) external returns (HelperCVL.PoolId) envfree;
     function _HelperCVL.fromId(uint256 id) external returns (HelperCVL.Currency) envfree;
+    function _HelperCVL.getAbsTick(int24 tick) external returns (uint256) envfree;
+
+    function _.toId(PoolManager.PoolKey memory poolKey) internal
+        => poolKeyToPoolIdCVL(poolKey) expect PoolManager.PoolId ALL;
+    function _.calculatePositionKey(
+        address owner, int24 tickLower, int24 tickUpper, bytes32 salt
+    ) internal => calculatePositionKeyCVL(owner, tickLower, tickUpper, salt) expect bytes32 ALL;
 }
 
 function poolKeyToPoolIdCVL(HelperCVL.PoolKey key) returns HelperCVL.PoolId {

@@ -4,30 +4,43 @@ methods {
 
     // CurrencyLibrary
     function CurrencyLibrary.transfer(PoolManager.Currency currency, address to, uint256 amount) internal with (env e) 
-        => transferCVL(e, currency, to, amount);
+        => transferNotRetCVL(e, currency, to, amount);
     function CurrencyLibrary.balanceOfSelf(PoolManager.Currency currency) internal returns (uint256) with (env e) 
         => balanceOfSelfCVL(e, currency, calledContract);
     function CurrencyLibrary.balanceOf(PoolManager.Currency currency, address owner) internal returns (uint256) with (env e) 
         => balanceOfCVL(e, currency, owner);   
 
     // IERC20Minimal
+    function _.transfer(address to, uint256 amount) external with (env e) 
+        => transferCVL(e, calledContract, to, amount) expect bool;
+    function _.balanceOf(address owner) external with (env e) 
+        => balanceOfCVL(e, calledContract, owner) expect uint256;
     function _.transferFrom(address sender, address recipient, uint256 amount) external with (env e)
         => transferFromCVL(e, calledContract, sender, recipient, amount) expect bool;
 }
 
-function transferCVL(env e, address currency, address to, uint256 amount) {
+function transferCVL(env e, address currency, address to, uint256 amount) returns bool {
+
+    bool result;
 
     requireValidCurrencyAddressCVL(currency);
 
     if(currency == 0) {
         _HelperCVL.transferEther(e, to, amount);
+        result = true;
     } else if(currency == _ERC20A) {
-        _ERC20A.transfer(e, to, amount);
+        result = _ERC20A.transfer(e, to, amount);
     } else if(currency == _ERC20B) {
-        _ERC20B.transfer(e, to, amount);
+        result = _ERC20B.transfer(e, to, amount);
     } else {
-        _ERC20C.transfer(e, to, amount);
+        result = _ERC20C.transfer(e, to, amount);
     }
+
+    return result;
+}
+
+function transferNotRetCVL(env e, address currency, address to, uint256 amount) {
+    transferCVL(e, currency, to, amount);
 }
 
 function balanceOfSelfCVL(env e, address currency, address owner) returns uint256 {

@@ -47,4 +47,12 @@ contract HelperCVL {
         (bool success, ) = to.call{value: amount}(""); 
         require(success);
     }
+
+    function getAbsTick(int24 tick) external pure returns (uint256) {
+        if (tick < 0) {
+            return uint256(-int256(tick));
+        } else {
+            return uint256(int256(tick));
+        }
+    }
 }
