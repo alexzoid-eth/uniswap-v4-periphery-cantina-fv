@@ -6,7 +6,6 @@ import "./TransientStorage.spec";
 import "./Constants.spec";
 import "./HelperCVL.spec";
 import "./MathCVL.spec";
-//import "./PoolManagerMockHooks.spec";
 import "./TransientStateLibrary.spec";
 
 using PoolManager as _PoolManager;
@@ -15,75 +14,9 @@ using PoolManager as _PoolManager;
 
 methods {
 
-    // External functions
-    //  - assume valid pool key inside all external functions except initialize()
-    //  - assume currency can be address(0) - native, ERC20A, ERC20B or ERC20C
-    //  - assume all pools are NATIVE/ERC20B or ERC20A/ERC20B
-    //  - assume hookData length is zero as we don't need 
-
-    function _PoolManager.modifyLiquidity(
-        PoolManager.PoolKey key, IPoolManager.ModifyLiquidityParams params, bytes hookData
-    ) external returns (PoolManager.BalanceDelta, PoolManager.BalanceDelta) with (env e) 
-        => modifyLiquidityCLV(e, key, params, hookData);
-    
-    function _PoolManager.swap(
-        PoolManager.PoolKey key, IPoolManager.SwapParams params, bytes hookData
-    ) external returns (PoolManager.BalanceDelta) with (env e) 
-        => swapCVL(e, key, params, hookData);
-
-    function _PoolManager.donate(
-        PoolManager.PoolKey key, uint256 amount0, uint256 amount1, bytes hookData
-    ) external returns (PoolManager.BalanceDelta) with (env e) 
-        => donateCVL(e, key, amount0, amount1, hookData);
-
-    function _PoolManager.sync(PoolManager.Currency currency) external with (env e) 
-        => syncCVL(e, currency);
-
-    function _PoolManager.take(PoolManager.Currency currency, address to, uint256 amount) external with (env e) 
-        => takeCVL(e, currency, to, amount);
-
-    function _PoolManager.settle() external returns (uint256) with (env e) 
-        => settleCVL(e);
-
-    function _PoolManager.settleFor(address recipient) external returns (uint256) with (env e) 
-        => settleForCVL(e, recipient);
-
-    function _PoolManager.clear(PoolManager.Currency currency, uint256 amount) external with (env e) 
-        => clearCVL(e, currency, amount);
-
-    function _PoolManager.mint(address to, uint256 id, uint256 amount) external with (env e) 
-        => mintCVL(e, to, id, amount);
-
-    function _PoolManager.burn(address from, uint256 id, uint256 amount) external with (env e) 
-        => burnCVL(e, from, id, amount);
-
-    function _PoolManager.updateDynamicLPFee(PoolManager.PoolKey key, uint24 newDynamicLPFee) external with (env e) 
-        => updateDynamicLPFeeCVL(e, key, newDynamicLPFee);
-
-    function _PoolManager.setProtocolFee(PoolManager.PoolKey key, uint24 newProtocolFee) external with (env e) 
-        => setProtocolFeeCVL(e, key, newProtocolFee);
-
-    function _PoolManager.collectProtocolFees(
-        address recipient, PoolManager.Currency currency, uint256 amount
-    ) external returns (uint256) with (env e) => collectProtocolFeesCVL(e, recipient, currency, amount);
-    
-    // extsload()/exttload() summarized in upper lever, should never executes
-    function _PoolManager.extsload(bytes32 slot) external returns (bytes32) => extAssertFalseCVL();
-    function _PoolManager.extsload(bytes32 startSlot, uint256 nSlots) external returns (bytes32[]) => extaAssertFalseCVL();
-    function _PoolManager.extsload(bytes32[] slots) external returns (bytes32[]) => extaAssertFalseCVL();
-    function _PoolManager.exttload(bytes32 slot) external returns (bytes32) => extAssertFalseCVL();
-    function _PoolManager.exttload(bytes32[] slots) external returns (bytes32[]) => extaAssertFalseCVL();
-
-    // unlock() not needed as _handleAction is no-op and summarizing unlock here would have no effect
-    function _PoolManager.unlock(bytes data) external returns (bytes) => NONDET DELETE;
-
-    // setProtocolFeeController() not needed as protocol fee controller summarized as CVL mapping
-    function _PoolManager.setProtocolFeeController(address controller) external => NONDET DELETE;
-
-    // ProtocolFees
-    // - use cvl mapping instead of external ProtocolFeeController contract
-    function ProtocolFees._fetchProtocolFee(PoolManager.PoolKey memory key) internal returns (uint24)
-        => fetchProtocolFeeCVL(key);
+    // Hooks are disabled 
+    function Hooks.callHook(address self, bytes memory data) internal returns (bytes memory) 
+        => callHookCVL();
 
     // SqrtPriceMath 
     //  - don't care about return values as too much complexity
@@ -100,10 +33,6 @@ methods {
         => NONDET;
     function TickMath.getTickAtSqrtPrice(uint160 sqrtPriceX96) internal returns (int24) 
         => getTickAtSqrtPriceCVL(sqrtPriceX96);
-
-    // Hooks are disabled 
-    function Hooks.callHook(address self, bytes memory data) internal returns (bytes memory) 
-        => callHookCVL();
 }
 
 ///////////////////////////////////////// Functions ////////////////////////////////////////////
@@ -114,10 +43,6 @@ function callHookCVL() returns bytes {
     require(ret.length == 0);
     return ret;
 }
-
-// Summarized in upper lever, should never executes
-function extAssertFalseCVL() returns bytes32 { assert(false, "should never executes"); bytes32 ret; return ret; }
-function extaAssertFalseCVL() returns bytes32[] { assert(false, "should never executes"); bytes32[] ret; return ret; }
 
 // Require valid input parameters of tested functions
 function requireValidEnvCVL(env e) {
