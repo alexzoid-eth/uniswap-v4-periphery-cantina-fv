@@ -1,15 +1,11 @@
 import "./PoolManagerBase.spec";
+import "./StateLibrary.spec";
 
 using PositionManagerHarness as _PositionManager;
 
 ///////////////////////////////////////// Methods /////////////////////////////////////////////
 
 methods {
-
-    // External functions
-    //  - assume currency can be address(0) - native, ERC20A, ERC20B or ERC20C
-    function _PositionManager.sweep(PoolManager.Currency currency, address to) external with (env e) 
-        => sweepCVL(e, currency, to);
 
     // Removed external functions
     // - modifyLiquidities(), modifyLiquiditiesWithoutUnlock() and unlockCallback() not needed as _handleAction is 
@@ -42,17 +38,6 @@ methods {
 
 ///////////////////////////////////////// Functions ////////////////////////////////////////////
 
-function sweepCVL(env e, PoolManager.Currency currency, address to) {
-
-    // Safe assumptions about environment
-    requireValidEnvCVL(e);
-
-    // Assume only supported in this environment currencies are passed
-    requireValidCurrencyCVL(currency);
-
-    _PositionManager.sweep(e, currency, to);
-}
-
 ////////////////////////////////////////// Hooks //////////////////////////////////////////////
 
 //
@@ -78,6 +63,26 @@ hook Sstore _PositionManager.nextTokenId uint256 val {
 //  - use uint256 value with .(offset 0) hook instead of PositionInfo
 
 persistent ghost mapping(uint256 => uint256) ghostPositionInfo;
+
+persistent ghost mapping (uint256 => mathint) ghostPositionInfoHasSubscriber {
+    init_state axiom forall uint256 id. ghostPositionInfoHasSubscriber[id] == 0;
+    axiom forall uint256 id. ghostPositionInfoHasSubscriber[id] == POSITION_INFO_UNPACK_HAS_SUBSCRIBER(ghostPositionInfo[id]);
+}
+
+persistent ghost mapping (uint256 => mathint) ghostPositionInfoTickLower {
+    init_state axiom forall uint256 id. ghostPositionInfoTickLower[id] == 0;
+    axiom forall uint256 id. ghostPositionInfoTickLower[id] == POSITION_INFO_UNPACK_TICK_LOWER(ghostPositionInfo[id]);
+}
+
+persistent ghost mapping (uint256 => mathint) ghostPositionInfoTickUpper {
+    init_state axiom forall uint256 id. ghostPositionInfoTickUpper[id] == 0;
+    axiom forall uint256 id. ghostPositionInfoTickUpper[id] == POSITION_INFO_UNPACK_TICK_UPPER(ghostPositionInfo[id]);
+}
+
+persistent ghost mapping (uint256 => mathint) ghostPositionInfoPoolId {
+    init_state axiom forall uint256 id. ghostPositionInfoPoolId[id] == 0;
+    axiom forall uint256 id. ghostPositionInfoPoolId[id] == POSITION_INFO_UNPACK_POOL_ID(ghostPositionInfo[id]);
+}
 
 definition POSITION_INFO_UNPACK_HAS_SUBSCRIBER(uint256 val) returns mathint 
     = val & 0xFF;

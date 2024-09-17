@@ -7,6 +7,7 @@ import "./Constants.spec";
 import "./HelperCVL.spec";
 import "./MathCVL.spec";
 import "./PoolManagerMockHooks.spec";
+import "./TransientStateLibrary.spec";
 
 using PoolManagerHarness as _PoolManager;
 
@@ -75,6 +76,7 @@ methods {
     function _PoolManager.extsload(bytes32[] slots) external returns (bytes32[]) => NONDET DELETE;
     function _PoolManager.exttload(bytes32 slot) external returns (bytes32) => NONDET DELETE;
     function _PoolManager.exttload(bytes32[] slots) external returns (bytes32[]) => NONDET DELETE;
+
     function _PoolManager.unlock(bytes data) external returns (bytes) => NONDET DELETE;
     function _PoolManager.setProtocolFeeController(address controller) external => NONDET DELETE;
 
@@ -102,24 +104,40 @@ methods {
 
 ///////////////////////////////////////// Functions ////////////////////////////////////////////
 
-// Require valid input parameters of tested functions
+///////
+function extsloadCVL() returns bytes32 { assert(false, "extsloadCVL"); bytes32 ret; return ret; }
+function extsloadArrayCVL() returns bytes32[] { assert(false, "extsloadArrayCVL"); bytes32[] ret; return ret; }
+function exttloadCVL() returns bytes32 { assert(false, "exttloadCVL"); bytes32 ret; return ret; }
+function exttloadArrayCVL() returns bytes32[] { assert(false, "exttloadArrayCVL"); bytes32[] ret; return ret; }
+///////
 
+// Require valid input parameters of tested functions
 function requireValidEnvCVL(env e) {
     require(e.msg.sender != 0);
     require(e.block.timestamp != 0);
 }
 
+// Support only NATIVE, ERC20A, ERC20B or ERC20C currencies
 function requireValidCurrencyAddressCVL(address currency) {
-    require(currency == 0 || currency == _ERC20A || currency == _ERC20B || currency == _ERC20C);
+    require(currency == NATIVE_CURRENCY() || currency == _ERC20A || currency == _ERC20B || currency == _ERC20C);
+}
+
+// Support only NATIVE/ERC20B or ERC20A/ERC20B pools
+function isValidPoolCurrencyCVL(address currency) returns bool {
+    return (currency == NATIVE_CURRENCY() || currency == _ERC20A || currency == _ERC20B);
+}
+
+function isValidCurrencyCVL(address currency) returns bool {
+    return (isValidPoolCurrencyCVL(currency) || currency == _ERC20C);
 }
 
 function requireValidCurrencyCVL(PoolManager.Currency currency) {
-    require(currency == 0 || currency == _ERC20A || currency == _ERC20B || currency == _ERC20C);
+    require(isValidCurrencyCVL(currency));
 }
 
 function requireValidKeyCVL(PoolManager.PoolKey poolKey) {
     require((_ERC20A > 0 && _ERC20A < _ERC20B)
-        && (poolKey.currency0 == 0 || poolKey.currency0 == _ERC20A)
+        && (poolKey.currency0 == NATIVE_CURRENCY() || poolKey.currency0 == _ERC20A)
         && (poolKey.currency1 == _ERC20B)
         && (poolKey.tickSpacing >= MIN_TICK_SPACING() && poolKey.tickSpacing <= MAX_TICK_SPACING())
         && (poolKey.fee <= MAX_LP_FEE() || poolKey.fee == DYNAMIC_FEE_FLAG())
@@ -144,9 +162,6 @@ function modifyLiquidityCLV(
     // Assume pool was initialized with valid pool key
     requireValidKeyCVL(key);
 
-    // Don't need hook data for testing
-    require(hookData.length == 0);
-
     PoolManager.BalanceDelta callerDelta;
     PoolManager.BalanceDelta feesAccrued;
     callerDelta, feesAccrued = _PoolManager.modifyLiquidity(e, key, params, hookData);
@@ -163,9 +178,6 @@ function swapCVL(
     // Assume pool was initialized with valid pool key
     requireValidKeyCVL(key);
     
-    // Don't need hook data for testing
-    require(hookData.length == 0);
-
     return _PoolManager.swap(e, key, params, hookData);
 }
 
@@ -179,9 +191,6 @@ function donateCVL(
     // Assume pool was initialized with valid pool key
     requireValidKeyCVL(key);
     
-    // Don't need hook data for testing
-    require(hookData.length == 0);
-
     return _PoolManager.donate(e, key, amount0, amount1, hookData);
 }
 
@@ -325,22 +334,27 @@ persistent ghost mapping (bytes32 => uint256) ghostPoolsSlot0 {
 
 persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0SqrtPriceX96 {
     init_state axiom forall bytes32 id. ghostPoolsSlot0SqrtPriceX96[id] == 0;
+    axiom forall bytes32 id. ghostPoolsSlot0SqrtPriceX96[id] == SLOT0_UNPACK_SQRT_PRICE_X96(ghostPoolsSlot0[id]);
 }
 
 persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0Tick {
     init_state axiom forall bytes32 id. ghostPoolsSlot0Tick[id] == 0;
+    axiom forall bytes32 id. ghostPoolsSlot0Tick[id] == SLOT0_UNPACK_TICK(ghostPoolsSlot0[id]);
 }
 
 persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0ProtocolFeeZeroForOne {
     init_state axiom forall bytes32 id. ghostPoolsSlot0ProtocolFeeZeroForOne[id] == 0;
+    axiom forall bytes32 id. ghostPoolsSlot0ProtocolFeeZeroForOne[id] == SLOT0_UNPACK_PROTOCOL_FEE_ZERO_FOR_ONE(ghostPoolsSlot0[id]);
 }
 
 persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0ProtocolFeeOneForZero {
     init_state axiom forall bytes32 id. ghostPoolsSlot0ProtocolFeeOneForZero[id] == 0;
+    axiom forall bytes32 id. ghostPoolsSlot0ProtocolFeeOneForZero[id] == SLOT0_UNPACK_PROTOCOL_FEE_ONE_FOR_ZERO(ghostPoolsSlot0[id]);
 }
 
 persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0LpFee {
     init_state axiom forall bytes32 id. ghostPoolsSlot0LpFee[id] == 0;
+    axiom forall bytes32 id. ghostPoolsSlot0LpFee[id] == SLOT0_UNPACK_PROTOCOL_LP_FEE(ghostPoolsSlot0[id]);
 }
 
 definition SLOT0_UNPACK_SQRT_PRICE_X96(uint256 val) returns mathint 
@@ -377,20 +391,10 @@ function Slot0LpFeeCVL(bytes32 poolId) returns mathint {
 // Use `.(offset 0)` instead of `.slot0` to bypass bytes32 to uint256 conversion limitation 
 hook Sload uint256 val _PoolManager._pools[KEY PoolManager.PoolId i].(offset 0) {
     require(ghostPoolsSlot0[i] == val);
-    //require(ghostPoolsSlot0SqrtPriceX96[i] == slot0SqrtPriceX96CVL(i));
-    //require(ghostPoolsSlot0Tick[i] == slot0TickCVL(i));
-    //require(ghostPoolsSlot0ProtocolFeeZeroForOne[i] == slot0ProtocolFeeZeroForOneCVL(i));
-    //require(ghostPoolsSlot0ProtocolFeeOneForZero[i] == slot0ProtocolFeeOneForZeroCVL(i));
-    //require(ghostPoolsSlot0LpFee[i] == Slot0LpFeeCVL(i));
 } 
 
 hook Sstore _PoolManager._pools[KEY PoolManager.PoolId i].(offset 0) uint256 val {
     ghostPoolsSlot0[i] = val;
-    //ghostPoolsSlot0SqrtPriceX96[i] = slot0SqrtPriceX96CVL(i);
-    //ghostPoolsSlot0Tick[i] = slot0TickCVL(i);
-    //ghostPoolsSlot0ProtocolFeeZeroForOne[i] = slot0ProtocolFeeZeroForOneCVL(i);
-    //ghostPoolsSlot0ProtocolFeeOneForZero[i] = slot0ProtocolFeeOneForZeroCVL(i);
-    //ghostPoolsSlot0LpFee[i] = Slot0LpFeeCVL(i);
 }
 
 // _pools[].feeGrowthGlobal0X128

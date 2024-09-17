@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.26;
+pragma solidity ^0.8.24;
 
 import {V4Router} from "src/V4Router.sol";
 import {ReentrancyLock} from "src/base/ReentrancyLock.sol";

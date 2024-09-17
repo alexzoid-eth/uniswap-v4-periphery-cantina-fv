@@ -6,6 +6,8 @@ definition CUSTOM_MAX_TICK_SPACING() returns int24 = 2;
 definition CUSTOM_TICK_MIN() returns int24 = -72;
 definition CUSTOM_TICK_MAX() returns int24 = 72;
 
+definition NATIVE_CURRENCY() returns address = 0;
+
 // PoolManager
 
 definition MAX_INT16() returns mathint = 2^15 - 1;

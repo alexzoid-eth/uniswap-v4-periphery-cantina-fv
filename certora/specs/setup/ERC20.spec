@@ -23,6 +23,10 @@ function transferCVL(env e, address currency, address to, uint256 amount) return
 
     bool result;
 
+    // Safe assumptions about environment
+    requireValidEnvCVL(e);
+
+    // Support only NATIVE, ERC20A, ERC20B or ERC20C currencies
     requireValidCurrencyAddressCVL(currency);
 
     if(currency == 0) {
@@ -45,6 +49,10 @@ function transferNotRetCVL(env e, address currency, address to, uint256 amount) 
 
 function balanceOfSelfCVL(env e, address currency, address owner) returns uint256 {
 
+    // Safe assumptions about environment
+    requireValidEnvCVL(e);
+
+    // Support only NATIVE, ERC20A, ERC20B or ERC20C currencies
     requireValidCurrencyAddressCVL(currency);
 
     uint256 balance;
@@ -64,6 +72,10 @@ function balanceOfSelfCVL(env e, address currency, address owner) returns uint25
 
 function balanceOfCVL(env e, address currency, address owner) returns uint256 {
 
+    // Safe assumptions about environment
+    requireValidEnvCVL(e);
+
+    // Support only NATIVE, ERC20A, ERC20B or ERC20C currencies
     requireValidCurrencyAddressCVL(currency);
 
     uint256 balance;
@@ -83,6 +95,10 @@ function balanceOfCVL(env e, address currency, address owner) returns uint256 {
 
 function transferFromCVL(env e, address currency, address sender, address recipient, uint256 amount) returns bool {
 
+    // Safe assumptions about environment
+    requireValidEnvCVL(e);
+
+    // Support only NATIVE, ERC20A, ERC20B or ERC20C currencies
     requireValidCurrencyAddressCVL(currency);
 
     if(currency == 0) {
