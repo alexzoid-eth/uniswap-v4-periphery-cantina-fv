@@ -11,10 +11,6 @@ methods {
         => balanceOfCVL(e, currency, owner);   
 
     // IERC20Minimal
-    function _.transfer(address to, uint256 amount) external with (env e) 
-        => transferCVL(e, calledContract, to, amount) expect bool;
-    function _.balanceOf(address owner) external with (env e) 
-        => balanceOfCVL(e, calledContract, owner) expect uint256;
     function _.transferFrom(address sender, address recipient, uint256 amount) external with (env e)
         => transferFromCVL(e, calledContract, sender, recipient, amount) expect bool;
 }

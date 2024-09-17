@@ -1,5 +1,10 @@
 // Support hooks testing
 
+// Disabled in optimisation purpose. To enable:
+//  - add file "lib/v4-core/src/test/MockHooks.sol" into conf
+//  - import this file in PoolManagerBase.spec
+//  - remove _PoolManager.callHook summarisation in PoolManagerBase.spec
+
 using MockHooks as _MockHooks;
 
 methods {

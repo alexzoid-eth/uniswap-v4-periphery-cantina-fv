@@ -6,10 +6,10 @@ import "./TransientStorage.spec";
 import "./Constants.spec";
 import "./HelperCVL.spec";
 import "./MathCVL.spec";
-import "./PoolManagerMockHooks.spec";
+//import "./PoolManagerMockHooks.spec";
 import "./TransientStateLibrary.spec";
 
-using PoolManagerHarness as _PoolManager;
+using PoolManager as _PoolManager;
 
 ///////////////////////////////////////// Methods /////////////////////////////////////////////
 
@@ -67,17 +67,17 @@ methods {
         address recipient, PoolManager.Currency currency, uint256 amount
     ) external returns (uint256) with (env e) => collectProtocolFeesCVL(e, recipient, currency, amount);
     
-    // Removed external functions
-    // - extsload()/exttload() leads to prover errors
-    // - unlock() not needed as _handleAction is no-op and summarizing unlock here would have no effect
-    // - setProtocolFeeController() not needed as protocol fee controller summarized as CVL mapping
-    function _PoolManager.extsload(bytes32 slot) external returns (bytes32) => NONDET DELETE;
-    function _PoolManager.extsload(bytes32 startSlot, uint256 nSlots) external returns (bytes32[]) => NONDET DELETE;
-    function _PoolManager.extsload(bytes32[] slots) external returns (bytes32[]) => NONDET DELETE;
-    function _PoolManager.exttload(bytes32 slot) external returns (bytes32) => NONDET DELETE;
-    function _PoolManager.exttload(bytes32[] slots) external returns (bytes32[]) => NONDET DELETE;
+    // extsload()/exttload() summarized in upper lever, should never executes
+    function _PoolManager.extsload(bytes32 slot) external returns (bytes32) => extAssertFalseCVL();
+    function _PoolManager.extsload(bytes32 startSlot, uint256 nSlots) external returns (bytes32[]) => extaAssertFalseCVL();
+    function _PoolManager.extsload(bytes32[] slots) external returns (bytes32[]) => extaAssertFalseCVL();
+    function _PoolManager.exttload(bytes32 slot) external returns (bytes32) => extAssertFalseCVL();
+    function _PoolManager.exttload(bytes32[] slots) external returns (bytes32[]) => extaAssertFalseCVL();
 
+    // unlock() not needed as _handleAction is no-op and summarizing unlock here would have no effect
     function _PoolManager.unlock(bytes data) external returns (bytes) => NONDET DELETE;
+
+    // setProtocolFeeController() not needed as protocol fee controller summarized as CVL mapping
     function _PoolManager.setProtocolFeeController(address controller) external => NONDET DELETE;
 
     // ProtocolFees
@@ -100,16 +100,24 @@ methods {
         => NONDET;
     function TickMath.getTickAtSqrtPrice(uint160 sqrtPriceX96) internal returns (int24) 
         => getTickAtSqrtPriceCVL(sqrtPriceX96);
+
+    // Hooks are disabled 
+    function Hooks.callHook(address self, bytes memory data) internal returns (bytes memory) 
+        => callHookCVL();
 }
 
 ///////////////////////////////////////// Functions ////////////////////////////////////////////
 
-///////
-function extsloadCVL() returns bytes32 { assert(false, "extsloadCVL"); bytes32 ret; return ret; }
-function extsloadArrayCVL() returns bytes32[] { assert(false, "extsloadArrayCVL"); bytes32[] ret; return ret; }
-function exttloadCVL() returns bytes32 { assert(false, "exttloadCVL"); bytes32 ret; return ret; }
-function exttloadArrayCVL() returns bytes32[] { assert(false, "exttloadArrayCVL"); bytes32[] ret; return ret; }
-///////
+// Hooks.callHook() stub
+function callHookCVL() returns bytes {
+    bytes ret; 
+    require(ret.length == 0);
+    return ret;
+}
+
+// Summarized in upper lever, should never executes
+function extAssertFalseCVL() returns bytes32 { assert(false, "should never executes"); bytes32 ret; return ret; }
+function extaAssertFalseCVL() returns bytes32[] { assert(false, "should never executes"); bytes32[] ret; return ret; }
 
 // Require valid input parameters of tested functions
 function requireValidEnvCVL(env e) {

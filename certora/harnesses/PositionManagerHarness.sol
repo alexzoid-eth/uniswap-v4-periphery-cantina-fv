@@ -8,7 +8,7 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 contract PositionManagerHarness is PositionManager {
 
     constructor(IPoolManager _poolManager, IAllowanceTransfer _permit2, uint256 _unsubscribeGasLimit) 
-        PositionManager(_poolManager, _permit2, _unsubscribeGasLimit) {  }
+        PositionManager(_poolManager, _permit2, _unsubscribeGasLimit) { }
 
     function increaseLiquidity(
         uint256 tokenId,
