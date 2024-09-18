@@ -13,7 +13,7 @@ methods {
     function _.permit(address owner, IAllowanceTransfer.PermitBatch permitBatch, bytes signature) external
         => NONDET;
     function _.transferFrom(address from, address to, uint160 amount, address token) external with (env e)
-        => transferFromNoRetCVL(e, token, from, to, amount) expect void;
+        => transferFromNoRetCVL(e, token, from, to, amount, true) expect void;
 
     // Notifier
     function _.notifySubscribe(uint256 tokenId, bytes data) external with (env e) 

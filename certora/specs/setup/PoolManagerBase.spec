@@ -1,6 +1,3 @@
-import "./HooksTestERC20A.spec";
-import "./HooksTestERC20B.spec";
-import "./HooksTestERC20C.spec";
 import "./ERC20.spec";
 import "./TransientStorage.spec";
 import "./Constants.spec";
@@ -28,6 +25,14 @@ methods {
     // Hooks are disabled 
     function Hooks.callHook(address self, bytes memory data) internal returns (bytes memory) 
         => callHookCVL();
+
+    // CurrencyLibrary
+    function CurrencyLibrary.transfer(PoolManager.Currency currency, address to, uint256 amount) internal with (env e) 
+        => transferFromNoRetCVL(e, currency, calledContract, to, amount, false);
+    function CurrencyLibrary.balanceOfSelf(PoolManager.Currency currency) internal returns (uint256) with (env e) 
+        => balanceOfCVL(e, currency, calledContract);
+    function CurrencyLibrary.balanceOf(PoolManager.Currency currency, address owner) internal returns (uint256) with (env e) 
+        => balanceOfCVL(e, currency, owner);   
 
     // SqrtPriceMath 
     //  - don't care about return values as too much complexity
@@ -61,37 +66,18 @@ function requireValidEnvCVL(env e) {
     require(e.block.timestamp != 0);
 }
 
-// Support only NATIVE, ERC20A, ERC20B or ERC20C currencies
-function requireValidCurrencyAddressCVL(address currency) {
-    require(currency == NATIVE_CURRENCY() || currency == _ERC20A || currency == _ERC20B || currency == _ERC20C);
-}
-
-// Support only NATIVE/ERC20B or ERC20A/ERC20B pools
-function isValidPoolCurrencyCVL(address currency) returns bool {
-    return (currency == NATIVE_CURRENCY() || currency == _ERC20A || currency == _ERC20B);
-}
-
-function isValidCurrencyCVL(address currency) returns bool {
-    return (isValidPoolCurrencyCVL(currency) || currency == _ERC20C);
-}
-
+// Require only NATIVE, ERC20A, ERC20B or ERC20C currencies
 function requireValidCurrencyCVL(PoolManager.Currency currency) {
-    require(isValidCurrencyCVL(currency));
+    require(isValidTokenCVL(currency));
 }
 
+// PoolKey corresponds initialize() successful call
 function requireValidKeyCVL(PoolManager.PoolKey poolKey) {
-    require((_ERC20A > 0 && _ERC20A < _ERC20B)
-        && (poolKey.currency0 == NATIVE_CURRENCY() || poolKey.currency0 == _ERC20A)
-        && (poolKey.currency1 == _ERC20B)
+    require((poolKey.currency0 == NATIVE_CURRENCY() || poolKey.currency0 == ghostERC20A)
+        && (poolKey.currency1 == ghostERC20B)
         && (poolKey.tickSpacing >= MIN_TICK_SPACING() && poolKey.tickSpacing <= MAX_TICK_SPACING())
         && (poolKey.fee <= MAX_LP_FEE() || poolKey.fee == DYNAMIC_FEE_FLAG())
     );
-}
-
-function requireTicksLimitationCVL(IPoolManager.ModifyLiquidityParams params) {
-    require(params.tickLower < params.tickUpper);
-    require(params.tickLower >= CUSTOM_TICK_MIN() && params.tickLower <= CUSTOM_TICK_MAX());
-    require(params.tickUpper >= CUSTOM_TICK_MIN() && params.tickUpper <= CUSTOM_TICK_MAX());
 }
 
 // Summarization for external functions 

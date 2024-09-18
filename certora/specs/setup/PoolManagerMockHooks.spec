@@ -1,5 +1,7 @@
 // Support hooks testing
 
+// @todo use CVL implementation of MockHooks
+
 // Disabled in optimisation purpose. To enable:
 //  - add file "lib/v4-core/src/test/MockHooks.sol" into conf
 //  - import this file in PoolManagerBase.spec
