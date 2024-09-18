@@ -7,8 +7,8 @@ methods {
         => transferNotRetCVL(e, currency, to, amount);
     function CurrencyLibrary.balanceOfSelf(PoolManager.Currency currency) internal returns (uint256) with (env e) 
         => balanceOfSelfCVL(e, currency, calledContract);
-    function CurrencyLibrary.balanceOf(PoolManager.Currency currency, address owner) internal returns (uint256) with (env e) 
-        => balanceOfCVL(e, currency, owner);   
+    // function CurrencyLibrary.balanceOf(PoolManager.Currency currency, address owner) internal returns (uint256) with (env e) 
+    //    => balanceOfCVL(e, currency, owner);   
 
     // IERC20Minimal
     function _.transferFrom(address sender, address recipient, uint256 amount) external with (env e)
@@ -108,4 +108,8 @@ function transferFromCVL(env e, address currency, address sender, address recipi
     }
 
     return true;
+}
+
+function transferFromNoRetCVL(env e, address currency, address sender, address recipient, uint256 amount) {
+    transferFromCVL(e, currency, sender, recipient, amount);
 }

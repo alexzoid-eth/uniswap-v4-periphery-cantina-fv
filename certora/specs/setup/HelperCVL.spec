@@ -16,9 +16,6 @@ methods {
 
     function _.toId(PoolManager.PoolKey memory poolKey) internal
         => poolKeyToPoolIdCVL(poolKey) expect PoolManager.PoolId ALL;
-    function _.calculatePositionKey(
-        address owner, int24 tickLower, int24 tickUpper, bytes32 salt
-    ) internal => calculatePositionKeyCVL(owner, tickLower, tickUpper, salt) expect bytes32 ALL;
 }
 
 function poolKeyToPoolIdCVL(HelperCVL.PoolKey key) returns HelperCVL.PoolId {

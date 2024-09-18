@@ -14,6 +14,17 @@ using PoolManager as _PoolManager;
 
 methods {
 
+    // extsload()/exttload() summarized in upper lever, should never executes
+    function _PoolManager.extsload(bytes32 slot) external returns (bytes32) => NONDET DELETE;
+    function _PoolManager.extsload(bytes32 startSlot, uint256 nSlots) external returns (bytes32[]) => NONDET DELETE;
+    function _PoolManager.extsload(bytes32[] slots) external returns (bytes32[]) => NONDET DELETE;
+    function _PoolManager.exttload(bytes32 slot) external returns (bytes32) => NONDET DELETE;
+    function _PoolManager.exttload(bytes32[] slots) external returns (bytes32[]) => NONDET DELETE;
+
+    // Use CVL mapping instead of external contract
+    function ProtocolFees._fetchProtocolFee(PoolManager.PoolKey memory key) internal returns (uint24)
+        => fetchProtocolFeeCVL(key);
+
     // Hooks are disabled 
     function Hooks.callHook(address self, bytes memory data) internal returns (bytes memory) 
         => callHookCVL();

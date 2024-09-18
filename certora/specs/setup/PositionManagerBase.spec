@@ -6,37 +6,82 @@ using PositionManagerHarness as _PositionManager;
 ///////////////////////////////////////// Methods /////////////////////////////////////////////
 
 methods {
-
-    // Removed external functions
-    // - modifyLiquidities(), modifyLiquiditiesWithoutUnlock() and unlockCallback() not needed as _handleAction is 
-    //  no-op and summarizing unlock here would have no effect
-    // - multicall() removed
-
-    function _PositionManager.modifyLiquidities(bytes unlockData, uint256 deadline) external => NONDET DELETE;
-    function _PositionManager.modifyLiquiditiesWithoutUnlock(bytes actions, bytes[] params) external => NONDET DELETE;
-    function _PositionManager.unlockCallback(bytes data) external returns (bytes)  => NONDET DELETE;
     
-    function _PositionManager.multicall(bytes[] data) external returns (bytes[]) => NONDET DELETE;
-    
+    // Permit2
+    function _.permit(address owner, IAllowanceTransfer.PermitSingle permitSingle, bytes signature) external
+        => NONDET;
+    function _.permit(address owner, IAllowanceTransfer.PermitBatch permitBatch, bytes signature) external
+        => NONDET;
+    function _.transferFrom(address from, address to, uint160 amount, address token) external with (env e)
+        => transferFromNoRetCVL(e, token, from, to, amount) expect void;
+
     // Notifier
-    //  - link external calls to MockSubscriber
-    function _.notifySubscribe(uint256, bytes data) external => DISPATCHER(true);
-    function _.notifyUnsubscribe(uint256) external => DISPATCHER(true);
+    function _.notifySubscribe(uint256 tokenId, bytes data) external with (env e) 
+        => notifySubscribeCVL(e, tokenId, data) expect void;
+    function _.notifyUnsubscribe(uint256 tokenId) external  with (env e) 
+        => notifyUnsubscribeCVL(e, tokenId) expect void;
     function _.notifyModifyLiquidity(
-        uint256, int256 _liquidityChange, PoolManager.BalanceDelta _feesAccrued
-    ) external => DISPATCHER(true);
-    function _.notifyTransfer(uint256, address, address) external => DISPATCHER(true);
+        uint256 tokenId, int256 _liquidityChange, PoolManager.BalanceDelta _feesAccrued
+    ) external with (env e) => notifyModifyLiquidityCVL(e, tokenId, _liquidityChange, _feesAccrued) expect void;
+    function _.notifyTransfer(uint256 tokenId, address previousOwner, address newOwner) external with (env e)
+        => notifyTransferCVL(e, tokenId, previousOwner, newOwner) expect void;
 
     // ERC721
     //  - don't care about call to ERC721TokenReceiver from safeTransfer()
-    function _.onERC721Received(address, address, uint256, bytes) external => NONDET;
+    function _.onERC721Received(address, address, uint256, bytes) external 
+        => NONDET;
+    function _._hashTypedData(bytes32 dataHash) internal 
+        => hashTypedDataEIP712(calledContract, dataHash) expect bytes32;
 
-    // IERC1271
-    //  - the bytes4 magic value 0x1626ba7e
-    function _.isValidSignature(bytes32 hash, bytes signature) external => ALWAYS(0x1626ba7e);
+    // SignatureVerification
+    function SignatureVerification.verify(bytes calldata signature, bytes32 hash, address claimedSigner) internal
+        => verifyCVL(claimedSigner);
 }
 
 ///////////////////////////////////////// Functions ////////////////////////////////////////////
+
+// Permit2
+
+
+// ERC721
+ghost hashTypedDataEIP712(address,bytes32) returns bytes32 {
+    axiom forall address self. forall bytes32 hash1. forall bytes32 hash2.
+        hash1 != hash2 => hashTypedDataEIP712(self, hash1) != hashTypedDataEIP712(self, hash2);
+}
+
+// Mock notifier calls
+
+persistent ghost uint256 ghostNotifierTokenId;
+persistent ghost int256 ghostNotifierLiquidityChange;
+persistent ghost int256 ghostNotifierFeesAccrued;
+persistent ghost address ghostNotifierPreviousOwner;
+persistent ghost address ghostNotifierNewOwner;
+
+function notifySubscribeCVL(env e, uint256 tokenId, bytes data) {
+    require(data.length == 0);
+    ghostNotifierTokenId = tokenId;
+}
+
+function notifyUnsubscribeCVL(env e, uint256 tokenId)  {
+    ghostNotifierTokenId = tokenId;
+}
+
+function notifyModifyLiquidityCVL(env e, uint256 tokenId, int256 liquidityChange, PoolManager.BalanceDelta feesAccrued) {
+    ghostNotifierTokenId = tokenId;
+    ghostNotifierLiquidityChange = liquidityChange;
+    ghostNotifierFeesAccrued = feesAccrued;
+}
+
+function notifyTransferCVL(env e, uint256 tokenId, address previousOwner, address newOwner) {
+    ghostNotifierTokenId = tokenId;
+    ghostNotifierPreviousOwner = previousOwner;
+    ghostNotifierNewOwner = newOwner;
+}
+
+// SignatureVerification.verify() summary
+function verifyCVL(address claimedSigner) {
+    require(claimedSigner != 0);
+}
 
 ////////////////////////////////////////// Hooks //////////////////////////////////////////////
 

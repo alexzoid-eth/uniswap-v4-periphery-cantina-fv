@@ -3,10 +3,6 @@ import "./PoolManagerValidState.spec";
 
 methods {
 
-    // Use CVL mapping instead of external contract
-    function ProtocolFees._fetchProtocolFee(PoolManager.PoolKey memory key) internal returns (uint24)
-        => fetchProtocolFeeCVL(key);
-
     // External functions
     //  - assume valid pool key inside all external functions except initialize()
     //  - assume currency can be address(0) - native, ERC20A, ERC20B or ERC20C
@@ -58,13 +54,6 @@ methods {
     function _PoolManager.collectProtocolFees(
         address recipient, PoolManager.Currency currency, uint256 amount
     ) external returns (uint256) with (env e) => collectProtocolFeesCVL(e, recipient, currency, amount);
-
-    // extsload()/exttload() summarized in upper lever, should never executes
-    function _PoolManager.extsload(bytes32 slot) external returns (bytes32) => NONDET DELETE;
-    function _PoolManager.extsload(bytes32 startSlot, uint256 nSlots) external returns (bytes32[]) => NONDET DELETE;
-    function _PoolManager.extsload(bytes32[] slots) external returns (bytes32[]) => NONDET DELETE;
-    function _PoolManager.exttload(bytes32 slot) external returns (bytes32) => NONDET DELETE;
-    function _PoolManager.exttload(bytes32[] slots) external returns (bytes32[]) => NONDET DELETE;
 
     // unlock() not needed as _handleAction is no-op and summarizing unlock here would have no effect
     function _PoolManager.unlock(bytes data) external returns (bytes) => NONDET DELETE;

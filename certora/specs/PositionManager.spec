@@ -3,11 +3,20 @@ import "./PoolManagerValidState.spec";
 
 methods {
 
+    // Not needed as _handleAction is no-op and summarizing unlock here would have no effect
+    function _PositionManager.modifyLiquidities(bytes unlockData, uint256 deadline) external => NONDET DELETE;
+    function _PositionManager.modifyLiquiditiesWithoutUnlock(bytes actions, bytes[] params) external => NONDET DELETE;
+    function _PositionManager.unlockCallback(bytes data) external returns (bytes)  => NONDET DELETE;
+    
+    // External multicall() removed
+    function _PositionManager.multicall(bytes[] data) external returns (bytes[]) => NONDET DELETE;
+
+    // Removed due prover warnings
+    function _PositionManager.name() external returns (string) => NONDET DELETE;
+    function _PositionManager.symbol() external returns (string) => NONDET DELETE;
+    function _PositionManager.DOMAIN_SEPARATOR() external returns (bytes32) => CONSTANT DELETE;
+
     // PoolManager summaries
-
-    function ProtocolFees._fetchProtocolFee(PoolManager.PoolKey memory key) internal returns (uint24)
-        => fetchProtocolFeeCVL(key);
-
     function _PoolManager.modifyLiquidity(
         PoolManager.PoolKey key, IPoolManager.ModifyLiquidityParams params, bytes hookData
     ) external returns (PoolManager.BalanceDelta, PoolManager.BalanceDelta) with (env e) 
@@ -24,6 +33,11 @@ methods {
 
     function _PoolManager.settle() external returns (uint256) with (env e) 
         => settleCVL(e);
+
+    // HelperCVL
+    function _.calculatePositionKey(
+        address owner, int24 tickLower, int24 tickUpper, bytes32 salt
+    ) internal => calculatePositionKeyCVL(owner, tickLower, tickUpper, salt) expect bytes32 ALL;
 }
 
 use builtin rule sanity filtered { f -> f.contract == currentContract }
