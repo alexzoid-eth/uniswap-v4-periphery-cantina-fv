@@ -79,7 +79,7 @@ contract V4RouterHarness is V4Router, ReentrancyLock {
         if (payer == address(this)) {
             currency.transfer(address(poolManager), amount);
         } else {
-            ERC20(Currency.unwrap(currency)).transferFrom(payer, address(poolManager), amount);
+            require(ERC20(Currency.unwrap(currency)).transferFrom(payer, address(poolManager), amount), "transferFrom() failed");
         }
     }
 

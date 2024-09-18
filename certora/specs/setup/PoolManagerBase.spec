@@ -24,16 +24,16 @@ methods {
 
     // Hooks are disabled 
     function Hooks.callHook(address self, bytes memory data) internal returns (bytes memory) 
-        => callHookCVL();
+        => callHookStubCVL();
 
     // CurrencyLibrary
     function CurrencyLibrary.transfer(PoolManager.Currency currency, address to, uint256 amount) internal with (env e) 
-        => transferFromNoRetCVL(e, currency, calledContract, to, amount, false);
+        => safeTransferFromCVL(e, currency, calledContract, to, amount, false);
     function CurrencyLibrary.balanceOfSelf(PoolManager.Currency currency) internal returns (uint256) with (env e) 
         => balanceOfCVL(e, currency, calledContract);
     function CurrencyLibrary.balanceOf(PoolManager.Currency currency, address owner) internal returns (uint256) with (env e) 
         => balanceOfCVL(e, currency, owner);   
-
+    
     // SqrtPriceMath 
     //  - don't care about return values as too much complexity
     function SqrtPriceMath.getAmount0Delta(
@@ -53,44 +53,109 @@ methods {
 
 ///////////////////////////////////////// Functions ////////////////////////////////////////////
 
-// Hooks.callHook() stub
-function callHookCVL() returns bytes {
+// Hooks stub
+
+function callHookStubCVL() returns bytes {
     bytes ret; 
     require(ret.length == 0);
     return ret;
 }
 
-// Require valid input parameters of tested functions
-function requireValidEnvCVL(env e) {
-    require(e.msg.sender != 0);
-    require(e.block.timestamp != 0);
+function isEmptyHookData(bytes data) returns bool {
+    return data.length == 0;
 }
 
-// Require only NATIVE, ERC20A, ERC20B or ERC20C currencies
-function requireValidCurrencyCVL(PoolManager.Currency currency) {
-    require(isValidTokenCVL(currency));
+// Valid params
+
+function isValidEnvCVL(env e) returns bool {
+    return (e.msg.sender != 0 
+        && e.block.timestamp != 0
+    );
 }
 
-// PoolKey corresponds initialize() successful call
-function requireValidKeyCVL(PoolManager.PoolKey poolKey) {
-    require((poolKey.currency0 == NATIVE_CURRENCY() || poolKey.currency0 == ghostERC20A)
-        && (poolKey.currency1 == ghostERC20B)
-        && (poolKey.tickSpacing >= MIN_TICK_SPACING() && poolKey.tickSpacing <= MAX_TICK_SPACING())
+function isValidKeyCVL(PoolManager.PoolKey poolKey) returns bool {
+    return (isLimitedKeyCVL(poolKey)
+        && (poolKey.currency0 == NATIVE_CURRENCY() || poolKey.currency0 == ghostERC20A)
+        && poolKey.currency1 == ghostERC20B
+        && poolKey.tickSpacing >= MIN_TICK_SPACING() && poolKey.tickSpacing <= MAX_TICK_SPACING()
         && (poolKey.fee <= MAX_LP_FEE() || poolKey.fee == DYNAMIC_FEE_FLAG())
     );
 }
 
+function isValidTicks(int24 tickLower, int24 tickUpper) returns bool {
+    return (isLimitedTicks(tickLower, tickUpper)
+        && tickLower < tickUpper
+        && tickLower >= MIN_TICK()
+        && tickUpper <= MAX_TICK()
+    );
+}
+
+function isValidSwapParams(IPoolManager.SwapParams params) returns bool {
+    return (isLimitedSwapParams(params)
+        && params.amountSpecified != 0
+    );
+}
+
+function isValidSqrtPriceLimitX96(uint160 sqrtPriceLimitX96) returns bool {
+    return (isLimitedSqrtPriceLimitX96(sqrtPriceLimitX96)
+        && sqrtPriceLimitX96 >= MIN_SQRT_PRICE() && sqrtPriceLimitX96 < MAX_SQRT_PRICE()
+    );
+}
+
+// Decrease complexity
+
+function isLimitedKeyCVL(PoolManager.PoolKey poolKey) returns bool {
+    return (
+        poolKey.tickSpacing >= CUSTOM_MIN_TICK_SPACING() && poolKey.tickSpacing <= CUSTOM_MAX_TICK_SPACING()
+        && poolKey.fee == CUSTOM_POOL_FEE()
+    );
+}
+
+function isLimitedTicks(int24 tickLower, int24 tickUpper) returns bool {
+    return tickLower >= CUSTOM_MIN_TICK() && tickUpper <= CUSTOM_MAX_TICK();
+}
+
+function isLimitedSqrtPriceLimitX96(uint160 sqrtPriceLimitX96) returns bool {
+    return sqrtPriceLimitX96 >= CUSTOM_PRICE_LIMIT_X96_MIN() && sqrtPriceLimitX96 <= CUSTOM_PRICE_LIMIT_X96_MAX();
+}
+
+function isLimitedSwapParams(IPoolManager.SwapParams params) returns bool {
+    return (isLimitedSqrtPriceLimitX96(params.sqrtPriceLimitX96)
+        && params.amountSpecified >= CUSTOM_SWAP_AMOUNT_MIN() && params.amountSpecified <= CUSTOM_SWAP_AMOUNT_MAX()
+        );
+}
+
 // Summarization for external functions 
+
+function initializeCVL(env e, PoolManager.PoolKey key, uint160 sqrtPriceX96, bytes hookData) returns int24 {
+
+    // Safe assumptions about environment
+    require(isValidEnvCVL(e));
+
+    // Empty hook data
+    require(isEmptyHookData(hookData));
+
+    // Assume price in valid range
+    require(isValidSqrtPriceLimitX96(sqrtPriceX96));
+
+    return _PoolManager.initialize(e, key, sqrtPriceX96, hookData);
+}
 
 function modifyLiquidityCLV(
     env e, PoolManager.PoolKey key, IPoolManager.ModifyLiquidityParams params, bytes hookData
     ) returns (PoolManager.BalanceDelta, PoolManager.BalanceDelta) {
     
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Assume pool was initialized with valid pool key
-    requireValidKeyCVL(key);
+    require(isValidKeyCVL(key));
+
+    // Accept valid range of ticks
+    require(isValidTicks(params.tickLower, params.tickUpper));
+
+    // Empty hook data
+    require(isEmptyHookData(hookData));
 
     PoolManager.BalanceDelta callerDelta;
     PoolManager.BalanceDelta feesAccrued;
@@ -102,13 +167,23 @@ function swapCVL(
     env e, PoolManager.PoolKey key, IPoolManager.SwapParams params, bytes hookData
     ) returns PoolManager.BalanceDelta {
     
+    PoolManager.BalanceDelta delta;
+
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Assume pool was initialized with valid pool key
-    requireValidKeyCVL(key);
+    require(isValidKeyCVL(key));
     
-    return _PoolManager.swap(e, key, params, hookData);
+    // Check params
+    require(isValidSwapParams(params));
+
+    // Empty hook data
+    require(isEmptyHookData(hookData));
+
+    delta = _PoolManager.swap(e, key, params, hookData);
+
+    return delta;
 }
 
 function donateCVL(
@@ -116,21 +191,24 @@ function donateCVL(
     ) returns PoolManager.BalanceDelta {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Assume pool was initialized with valid pool key
-    requireValidKeyCVL(key);
+    require(isValidKeyCVL(key));
     
+    // Empty hook data
+    require(isEmptyHookData(hookData));
+
     return _PoolManager.donate(e, key, amount0, amount1, hookData);
 }
 
 function syncCVL(env e, PoolManager.Currency currency) {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Assume only supported in this environment currencies are passed
-    requireValidCurrencyCVL(currency);
+    require(isValidTokenCVL(currency));
 
     _PoolManager.sync(e, currency);
 }
@@ -138,10 +216,10 @@ function syncCVL(env e, PoolManager.Currency currency) {
 function takeCVL(env e, PoolManager.Currency currency, address to, uint256 amount) {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Assume only supported in this environment currencies are passed
-    requireValidCurrencyCVL(currency);
+    require(isValidTokenCVL(currency));
 
     _PoolManager.take(e, currency, to, amount);
 }
@@ -149,7 +227,7 @@ function takeCVL(env e, PoolManager.Currency currency, address to, uint256 amoun
 function settleCVL(env e) returns uint256 {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     return _PoolManager.settle(e);
 }
@@ -157,7 +235,7 @@ function settleCVL(env e) returns uint256 {
 function settleForCVL(env e, address recipient) returns uint256 {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     return _PoolManager.settleFor(e, recipient);
 }
@@ -165,10 +243,10 @@ function settleForCVL(env e, address recipient) returns uint256 {
 function clearCVL(env e, PoolManager.Currency currency, uint256 amount) {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Assume only supported in this environment currencies are passed
-    requireValidCurrencyCVL(currency);
+    require(isValidTokenCVL(currency));
 
     _PoolManager.clear(e, currency, amount);
 }
@@ -176,10 +254,10 @@ function clearCVL(env e, PoolManager.Currency currency, uint256 amount) {
 function mintCVL(env e, address to, uint256 id, uint256 amount) {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Assume only supported in this environment currencies are passed
-    requireValidCurrencyCVL(_HelperCVL.fromId(id));
+    require(isValidTokenCVL(_HelperCVL.fromId(id)));
 
     _PoolManager.mint(e, to, id, amount);
 }
@@ -187,10 +265,10 @@ function mintCVL(env e, address to, uint256 id, uint256 amount) {
 function burnCVL(env e, address from, uint256 id, uint256 amount) {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Assume only supported in this environment currencies are passed
-    requireValidCurrencyCVL(_HelperCVL.fromId(id));
+    require(isValidTokenCVL(_HelperCVL.fromId(id)));
 
     _PoolManager.burn(e, from, id, amount);
 }
@@ -198,10 +276,10 @@ function burnCVL(env e, address from, uint256 id, uint256 amount) {
 function updateDynamicLPFeeCVL(env e, PoolManager.PoolKey key, uint24 newDynamicLPFee) {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Assume pool was initialized with valid pool key
-    requireValidKeyCVL(key);
+    require(isValidKeyCVL(key));
 
     _PoolManager.updateDynamicLPFee(e, key, newDynamicLPFee);
 }
@@ -209,10 +287,10 @@ function updateDynamicLPFeeCVL(env e, PoolManager.PoolKey key, uint24 newDynamic
 function setProtocolFeeCVL(env e, PoolManager.PoolKey key, uint24 newProtocolFee) {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Assume pool was initialized with valid pool key
-    requireValidKeyCVL(key);
+    require(isValidKeyCVL(key));
 
     _PoolManager.setProtocolFee(e, key, newProtocolFee);
 }
@@ -220,10 +298,10 @@ function setProtocolFeeCVL(env e, PoolManager.PoolKey key, uint24 newProtocolFee
 function collectProtocolFeesCVL(env e, address recipient, PoolManager.Currency currency, uint256 amount) returns uint256 {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Assume only supported in this environment currencies are passed
-    requireValidCurrencyCVL(currency);
+    require(isValidTokenCVL(currency));
 
     return _PoolManager.collectProtocolFees(e, recipient, currency, amount);
 }
@@ -245,7 +323,6 @@ function getTickAtSqrtPriceCVL(uint160 sqrtPriceX96) returns int24 {
     int24 tick;
 
     require(sqrtPriceX96 >= MIN_SQRT_PRICE() && sqrtPriceX96 < MAX_SQRT_PRICE());
-    require(_HelperCVL.getAbsTick(tick) <= MAX_TICK());
 
     return tick;
 }

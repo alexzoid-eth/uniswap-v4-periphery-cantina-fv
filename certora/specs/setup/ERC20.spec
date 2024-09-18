@@ -48,7 +48,7 @@ persistent ghost mapping(address => mapping(address => mapping(address => mathin
 function balanceOfCVL(env e, address token, address owner) returns uint256 {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Support only NATIVE, ERC20A, ERC20B or ERC20C currencies
     require(isValidTokenCVL(token));
@@ -61,21 +61,21 @@ function balanceOfCVL(env e, address token, address owner) returns uint256 {
 function transferFromCVL(env e, address token, address from, address to, uint256 amount, bool transferFrom) returns bool {
 
     // Safe assumptions about environment
-    requireValidEnvCVL(e);
+    require(isValidEnvCVL(e));
 
     // Support only NATIVE, ERC20A, ERC20B or ERC20C currencies
     require(isValidTokenCVL(token));
 
     if(token == NATIVE_CURRENCY()) {
-        assert(transferFrom == false, "transferFrom() not allowed from native currency");
+        assert(transferFrom == false, "transferFrom() is not allowed for native currency");
         _HelperCVL.transferEther(e, to, amount);
     } else {
         if(transferFrom) {
-            require(ghostERC20Allowances[token][from][to] >= amount);
+            if(ghostERC20Allowances[token][from][to] < amount) return false;
             ghostERC20Allowances[token][from][to] = assert_uint256(ghostERC20Allowances[token][from][to] - amount);
         }
 
-        require(ghostERC20Balances[token][from] >= amount);
+        if(ghostERC20Balances[token][from] < amount) return false;
         ghostERC20Balances[token][from] = assert_uint256(ghostERC20Balances[token][from] - amount);
         ghostERC20Balances[token][to] = require_uint256(ghostERC20Balances[token][to] + amount);
     }
@@ -83,6 +83,7 @@ function transferFromCVL(env e, address token, address from, address to, uint256
     return true;
 }
 
-function transferFromNoRetCVL(env e, address token, address from, address to, uint256 amount, bool transferFrom) {
-    transferFromCVL(e, token, from, to, amount, transferFrom);
+function safeTransferFromCVL(env e, address token, address from, address to, uint256 amount, bool transferFrom) {
+    bool result = transferFromCVL(e, token, from, to, amount, transferFrom);
+    _HelperCVL.assertOnFailure(result);
 }

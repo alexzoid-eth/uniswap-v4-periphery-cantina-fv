@@ -1,12 +1,18 @@
 // Custom
 
+definition NATIVE_CURRENCY() returns address = 0;
+
+// Decrease complexity
+
 definition CUSTOM_MIN_TICK_SPACING() returns int24 = 1;
 definition CUSTOM_MAX_TICK_SPACING() returns int24 = 2;
-
-definition CUSTOM_TICK_MIN() returns int24 = -72;
-definition CUSTOM_TICK_MAX() returns int24 = 72;
-
-definition NATIVE_CURRENCY() returns address = 0;
+definition CUSTOM_MIN_TICK() returns int24 = -4;
+definition CUSTOM_MAX_TICK() returns int24 = 4;
+definition CUSTOM_POOL_FEE() returns uint24 = 1000; // 0.1%
+definition CUSTOM_SWAP_AMOUNT_MIN() returns int256 = -1000000;
+definition CUSTOM_SWAP_AMOUNT_MAX() returns int256 = 1000000;
+definition CUSTOM_PRICE_LIMIT_X96_MIN() returns uint160 = require_uint160(MIN_SQRT_PRICE());
+definition CUSTOM_PRICE_LIMIT_X96_MAX() returns uint160 = require_uint160(MIN_SQRT_PRICE() + 1000000000);
 
 // PoolManager
 

@@ -17,6 +17,12 @@ methods {
     function _PositionManager.DOMAIN_SEPARATOR() external returns (bytes32) => CONSTANT DELETE;
 
     // PoolManager summaries
+
+    function _PoolManager.initialize(
+        PoolManager.PoolKey key, uint160 sqrtPriceX96, bytes hookData
+        ) external returns (int24) with (env e) 
+        => initializeCVL(e, key, sqrtPriceX96, hookData);
+
     function _PoolManager.modifyLiquidity(
         PoolManager.PoolKey key, IPoolManager.ModifyLiquidityParams params, bytes hookData
     ) external returns (PoolManager.BalanceDelta, PoolManager.BalanceDelta) with (env e) 

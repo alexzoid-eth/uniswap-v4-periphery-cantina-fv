@@ -48,11 +48,7 @@ contract HelperCVL {
         require(success);
     }
 
-    function getAbsTick(int24 tick) external pure returns (uint256) {
-        if (tick < 0) {
-            return uint256(-int256(tick));
-        } else {
-            return uint256(int256(tick));
-        }
+    function assertOnFailure(bool success) external {
+        require(success);
     }
 }
