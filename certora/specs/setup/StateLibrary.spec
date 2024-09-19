@@ -1,7 +1,8 @@
 methods {
-    // StateLibrary (PositionManager use it)
+    // StateLibrary
     //  - read values from storage hooks ghost variables directly as PoolManager's extsload() is removed
     
+    // PositionManager use StateLibrary.getPositionLiquidity() only
     function StateLibrary.getPositionLiquidity(
         address manager,
         PoolManager.PoolId poolId,
@@ -59,7 +60,7 @@ methods {
 function getPositionLiquidityCVL(PoolManager.PoolId poolId, bytes32 positionKey) returns uint128 {
     return require_uint128(ghostPoolsPositionsLiquidity[poolId][positionKey]);
 }
-/*
+
 function getSlot0CVL(PoolManager.PoolId poolId) returns (uint160, int24, uint24, uint24) {
     return (
         require_uint160(slot0SqrtPriceX96CVL(poolId)),
@@ -114,4 +115,3 @@ function getPositionInfoCVL(PoolManager.PoolId poolId, bytes32 positionKey) retu
         require_uint256(ghostPoolsPositionsFeeGrowthInside1LastX128[poolId][positionKey])
     );
 }
-*/

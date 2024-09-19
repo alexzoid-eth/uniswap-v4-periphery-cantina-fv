@@ -18,6 +18,9 @@ methods {
         => poolKeyToPoolIdCVL(poolKey) expect PoolManager.PoolId ALL;
 }
 
+// Make a single mathint from two addresses
+definition hashIntCVL(address user, address token) returns mathint = (to_mathint(user) * 2^160 + to_mathint(token));
+
 function poolKeyToPoolIdCVL(HelperCVL.PoolKey key) returns HelperCVL.PoolId {
     return _HelperCVL.wrapToPoolId(_HelperCVL.poolKeyToId(key));
 }

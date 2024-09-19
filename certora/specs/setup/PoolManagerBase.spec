@@ -5,7 +5,7 @@ import "./HelperCVL.spec";
 import "./MathCVL.spec";
 import "./TransientStateLibrary.spec";
 
-using PoolManager as _PoolManager;
+using PoolManagerHarness as _PoolManager;
 
 ///////////////////////////////////////// Methods /////////////////////////////////////////////
 
@@ -33,25 +33,33 @@ methods {
         => balanceOfCVL(e, currency, calledContract);
     function CurrencyLibrary.balanceOf(PoolManager.Currency currency, address owner) internal returns (uint256) with (env e) 
         => balanceOfCVL(e, currency, owner);   
-    
-    // SqrtPriceMath 
-    //  - don't care about return values as too much complexity
-    function SqrtPriceMath.getAmount0Delta(
-        uint160 sqrtRatioAX96, uint160 sqrtRatioBX96, uint128 liquidity, bool roundUp
-    ) internal returns (uint256) => NONDET;
-    function SqrtPriceMath.getAmount1Delta(
-        uint160 sqrtRatioAX96, uint160 sqrtRatioBX96, uint128 liquidity, bool roundUp
-    ) internal returns (uint256) => NONDET;
-        
+
     // TickMath 
-    //  - don't care about return values as too much complexity
-    function TickMath.getSqrtPriceAtTick(int24 tick) internal returns (uint160)
-        => NONDET;
     function TickMath.getTickAtSqrtPrice(uint160 sqrtPriceX96) internal returns (int24) 
         => getTickAtSqrtPriceCVL(sqrtPriceX96);
 }
 
 ///////////////////////////////////////// Functions ////////////////////////////////////////////
+
+// Pool helpers
+
+function isActivePositionCVL(int24 tick0, int24 tickLower, int24 tickUpper) returns bool {
+    return tick0 >= tickLower && tick0 < tickUpper;
+}
+
+function isActivePositionInPoolCVL(bytes32 poolId, int24 tickLower, int24 tickUpper) returns bool {
+    return isActivePositionCVL(require_int24(ghostPoolsSlot0Tick[poolId]), tickLower, tickUpper);
+}
+
+function amountsToBalanceDeltaCVL(int128 _amount0, int128 _amount1) returns PoolManager.BalanceDelta {
+
+    PoolManager.BalanceDelta delta;
+
+    require(_HelperCVL.amount0(delta) == _amount0);
+    require(_HelperCVL.amount1(delta) == _amount1);
+    
+    return delta;
+}
 
 // Hooks stub
 
@@ -61,7 +69,7 @@ function callHookStubCVL() returns bytes {
     return ret;
 }
 
-function isEmptyHookData(bytes data) returns bool {
+function isEmptyHookDataCVL(bytes data) returns bool {
     return data.length == 0;
 }
 
@@ -74,35 +82,39 @@ function isValidEnvCVL(env e) returns bool {
 }
 
 function isValidKeyCVL(PoolManager.PoolKey poolKey) returns bool {
-    return (isLimitedKeyCVL(poolKey)
-        && (poolKey.currency0 == NATIVE_CURRENCY() || poolKey.currency0 == ghostERC20A)
+    return (// isLimitedKeyCVL(poolKey) && 
+        (poolKey.currency0 == NATIVE_CURRENCY() || poolKey.currency0 == ghostERC20A)
         && poolKey.currency1 == ghostERC20B
         && poolKey.tickSpacing >= MIN_TICK_SPACING() && poolKey.tickSpacing <= MAX_TICK_SPACING()
         && (poolKey.fee <= MAX_LP_FEE() || poolKey.fee == DYNAMIC_FEE_FLAG())
     );
 }
 
-function isValidTicks(int24 tickLower, int24 tickUpper) returns bool {
-    return (isLimitedTicks(tickLower, tickUpper)
-        && tickLower < tickUpper
-        && tickLower >= MIN_TICK()
-        && tickUpper <= MAX_TICK()
+function isValidTickCVL(int24 tick) returns bool {
+    return (tick >= MIN_TICK() && tick <= MAX_TICK());
+}
+
+function isValidTicksCVL(int24 tickLower, int24 tickUpper) returns bool {
+    return (// isLimitedTicksCVL(tickLower, tickUpper) && 
+        tickLower < tickUpper
+        && isValidTickCVL(tickLower)
+        && isValidTickCVL(tickUpper)
     );
 }
 
-function isValidSwapParams(IPoolManager.SwapParams params) returns bool {
-    return (isLimitedSwapParams(params)
-        && params.amountSpecified != 0
+function isValidSwapParamsCVL(IPoolManager.SwapParams params) returns bool {
+    return (// isLimitedSwapParamsCVL(params) && 
+        params.amountSpecified != 0
     );
 }
 
-function isValidSqrtPriceLimitX96(uint160 sqrtPriceLimitX96) returns bool {
-    return (isLimitedSqrtPriceLimitX96(sqrtPriceLimitX96)
-        && sqrtPriceLimitX96 >= MIN_SQRT_PRICE() && sqrtPriceLimitX96 < MAX_SQRT_PRICE()
+function isValidSqrtPriceLimitX96CVL(uint160 sqrtPriceLimitX96) returns bool {
+    return (// isLimitedSqrtPriceLimitX96CVL(sqrtPriceLimitX96) && 
+        sqrtPriceLimitX96 >= MIN_SQRT_PRICE() && sqrtPriceLimitX96 < MAX_SQRT_PRICE()
     );
 }
 
-// Decrease complexity
+// Decrease complexity (NOT USED)
 
 function isLimitedKeyCVL(PoolManager.PoolKey poolKey) returns bool {
     return (
@@ -111,16 +123,16 @@ function isLimitedKeyCVL(PoolManager.PoolKey poolKey) returns bool {
     );
 }
 
-function isLimitedTicks(int24 tickLower, int24 tickUpper) returns bool {
+function isLimitedTicksCVL(int24 tickLower, int24 tickUpper) returns bool {
     return tickLower >= CUSTOM_MIN_TICK() && tickUpper <= CUSTOM_MAX_TICK();
 }
 
-function isLimitedSqrtPriceLimitX96(uint160 sqrtPriceLimitX96) returns bool {
+function isLimitedSqrtPriceLimitX96CVL(uint160 sqrtPriceLimitX96) returns bool {
     return sqrtPriceLimitX96 >= CUSTOM_PRICE_LIMIT_X96_MIN() && sqrtPriceLimitX96 <= CUSTOM_PRICE_LIMIT_X96_MAX();
 }
 
-function isLimitedSwapParams(IPoolManager.SwapParams params) returns bool {
-    return (isLimitedSqrtPriceLimitX96(params.sqrtPriceLimitX96)
+function isLimitedSwapParamsCVL(IPoolManager.SwapParams params) returns bool {
+    return (isLimitedSqrtPriceLimitX96CVL(params.sqrtPriceLimitX96)
         && params.amountSpecified >= CUSTOM_SWAP_AMOUNT_MIN() && params.amountSpecified <= CUSTOM_SWAP_AMOUNT_MAX()
         );
 }
@@ -133,12 +145,80 @@ function initializeCVL(env e, PoolManager.PoolKey key, uint160 sqrtPriceX96, byt
     require(isValidEnvCVL(e));
 
     // Empty hook data
-    require(isEmptyHookData(hookData));
-
-    // Assume price in valid range
-    require(isValidSqrtPriceLimitX96(sqrtPriceX96));
+    require(isEmptyHookDataCVL(hookData));
 
     return _PoolManager.initialize(e, key, sqrtPriceX96, hookData);
+}
+
+// Insert here a list of requirements that correlate the token amounts with liquidity delta
+function modifyLiquidityAmountsConditionsCVL(
+    bytes32 poolId,
+    int128 currency0Amount,
+    int128 currency1Amount,
+    int128 currency0FeeAmount,
+    int128 currency1FeeAmount,
+    int256 liquidityDelta
+) {
+    require(liquidityDelta > 0 => currency0Amount < 0 && currency1Amount < 0);
+    require(liquidityDelta < 0 => currency0Amount >= 0 && currency1Amount >= 0);
+}
+
+// Mock of _PoolManager.modifyLiquidity() to reduce complexity
+function _modifyLiquidityMockCLV(
+    env e, PoolManager.PoolKey key, IPoolManager.ModifyLiquidityParams params, bytes hookData
+) returns (PoolManager.BalanceDelta, PoolManager.BalanceDelta) {
+
+    // Calculate hashed pool and position IDs
+    bytes32 poolId = _HelperCVL.poolKeyToId(key);
+    bytes32 positionId = _HelperCVL.positionKey(e.msg.sender, params.tickLower, params.tickUpper, params.salt);
+
+    // Require valid range of ticks
+    require(isValidTicksCVL(params.tickLower, params.tickUpper));
+
+    // Require pool is initialized
+    require(ghostPoolsSlot0SqrtPriceX96[poolId] != 0);
+
+    // Update the position liquidity
+    ghostPoolsPositionsLiquidity[poolId][positionId] = require_uint128(
+        ghostPoolsPositionsLiquidity[poolId][positionId] + params.liquidityDelta
+        );
+
+    // Update the active pool liquidity
+    if(isActivePositionInPoolCVL(poolId, params.tickLower, params.tickUpper)) {
+        ghostPoolsLiquidity[poolId] = require_uint128(ghostPoolsLiquidity[poolId] + params.liquidityDelta);
+    }
+    
+    // Declare random currency deltas for the caller and the provided pool hook address
+    int128 amount0Principal;
+    int128 amount1Principal;
+    int128 amount0Fees;
+    int128 amount1Fees;
+    int128 amount0Hook;
+    int128 amount1Hook;
+
+    // No hooks used
+    require(key.hooks == 0 => amount0Hook == 0 && amount1Hook == 0);
+
+    // Restrict the amounts based on provided liquidity delta:
+    modifyLiquidityAmountsConditionsCVL(
+        poolId, amount0Principal, amount1Principal, amount0Fees, amount1Fees, params.liquidityDelta
+        );
+
+    int128 amount0Caller = require_int128(amount0Principal + amount0Fees);
+    int128 amount1Caller = require_int128(amount1Principal + amount1Fees);
+
+    // Fee shouldn't cancel out whole principal
+    require(amount0Principal != 0 => amount0Caller != 0);
+    require(amount1Principal != 0 => amount1Caller != 0);
+
+    PoolManager.BalanceDelta callerDelta = amountsToBalanceDeltaCVL(amount0Caller, amount1Caller);
+    PoolManager.BalanceDelta feesAccrued = amountsToBalanceDeltaCVL(amount0Fees, amount1Fees);
+
+    // Set currency deltas for msg.sender (position owner) and pool hook
+    _PoolManager.accountPoolBalanceDeltaHarness(e, key, callerDelta, e.msg.sender);
+    _PoolManager.accountPoolBalanceDeltaHarness(e, key, amountsToBalanceDeltaCVL(amount0Hook, amount1Hook), key.hooks);
+
+    return (callerDelta, feesAccrued);
 }
 
 function modifyLiquidityCLV(
@@ -151,16 +231,91 @@ function modifyLiquidityCLV(
     // Assume pool was initialized with valid pool key
     require(isValidKeyCVL(key));
 
-    // Accept valid range of ticks
-    require(isValidTicks(params.tickLower, params.tickUpper));
-
     // Empty hook data
-    require(isEmptyHookData(hookData));
+    require(isEmptyHookDataCVL(hookData));
 
     PoolManager.BalanceDelta callerDelta;
     PoolManager.BalanceDelta feesAccrued;
-    callerDelta, feesAccrued = _PoolManager.modifyLiquidity(e, key, params, hookData);
+
+    // Use Mock for _PoolManager.modifyLiquidity() call to reduce complexity
+    callerDelta, feesAccrued = _modifyLiquidityMockCLV(e, key, params, hookData);
+    
     return (callerDelta, feesAccrued);
+}
+
+// Insert here a list of requirements that correlate the token amounts for swapping
+function swapAmountsConditionsCVL(
+    bytes32 poolId,
+    bool zeroForOne,
+    int256 amountSpecified,
+    int128 currency0Amount,
+    int128 currency1Amount
+) {
+    // potential assumptions: direction of swapping: shouldn’t be getting both tokens and shouldn’t be giving both tokens
+    require(true);
+}
+
+// Change the havoc statements here that will dictate how the pool state changes
+function updatePoolStateOnSwapCVL(
+    bytes32 poolId,
+    bool zeroForOne,
+    uint160 sqrtPriceLimitX96,
+    int128 currency0Amount,
+    int128 currency1Amount 
+) {
+    /*
+    Alternatively, one can declare a random variable and assign:
+        int24 newTick;  poolTick[poolId] = newTick;
+        uint160 newSqrtPrice;  poolTick[poolId] = newSqrtPrice;
+        uint128 newLiquidity;  liquidityPerPool[poolId] = newLiquidity;
+    */
+
+    havoc ghostPoolsSlot0Tick assuming forall bytes32 poolIdA.
+        (poolIdA != poolId => ghostPoolsSlot0Tick@new[poolIdA] == ghostPoolsSlot0Tick@old[poolIdA]);
+    
+    havoc ghostPoolsSlot0SqrtPriceX96 assuming forall bytes32 poolIdA.
+        (poolIdA != poolId => ghostPoolsSlot0SqrtPriceX96@new[poolIdA] == ghostPoolsSlot0SqrtPriceX96@old[poolIdA]);
+
+    havoc ghostPoolsLiquidity assuming forall bytes32 poolIdA.
+        (poolIdA != poolId => ghostPoolsLiquidity@new[poolIdA] == ghostPoolsLiquidity@old[poolIdA]);
+}
+
+// Mock of _PoolManager.swap() to reduce complexity
+function _swapMockCVL(
+    env e, PoolManager.PoolKey key, IPoolManager.SwapParams params, bytes hookData
+    ) returns PoolManager.BalanceDelta {
+    
+    // Require nonzero amount specified
+    require(isValidSwapParamsCVL(params));
+
+    // Calculate hashed pool and position IDs.
+    bytes32 poolId = _HelperCVL.poolKeyToId(key);
+    
+    // Declare random currency deltas for the caller and the provided pool hook address.
+    int128 amount0Swapper;
+    int128 amount1Swapper;
+    int128 amount0Hook;
+    int128 amount1Hook;
+    int128 amount0Principal = require_int128(amount0Swapper + amount0Hook);
+    int128 amount1Principal = require_int128(amount1Swapper + amount1Hook);
+
+    // No hooks used
+    require(key.hooks == 0 => amount0Hook == 0 && amount1Hook == 0);
+
+    // Restrict the amounts based on provided swap details
+    swapAmountsConditionsCVL(poolId, params.zeroForOne, params.amountSpecified, amount0Principal, amount1Principal);
+
+    // Update the pool state post-swap
+    updatePoolStateOnSwapCVL(poolId, params.zeroForOne, params.sqrtPriceLimitX96, amount0Principal, amount1Principal);
+
+    PoolManager.BalanceDelta swapDelta;
+    swapDelta = amountsToBalanceDeltaCVL(amount0Swapper, amount1Swapper);
+
+    // Set currency deltas for msg.sender (position owner) and pool hook
+    _PoolManager.accountPoolBalanceDeltaHarness(e, key, swapDelta, e.msg.sender);
+    _PoolManager.accountPoolBalanceDeltaHarness(e, key, amountsToBalanceDeltaCVL(amount0Hook, amount1Hook), key.hooks);
+
+    return swapDelta;
 }
 
 function swapCVL(
@@ -175,13 +330,11 @@ function swapCVL(
     // Assume pool was initialized with valid pool key
     require(isValidKeyCVL(key));
     
-    // Check params
-    require(isValidSwapParams(params));
-
     // Empty hook data
-    require(isEmptyHookData(hookData));
+    require(isEmptyHookDataCVL(hookData));
 
-    delta = _PoolManager.swap(e, key, params, hookData);
+    // Use mock instead of _PoolManager.swap() to reduce complexity
+    delta = _swapMockCVL(e, key, params, hookData);
 
     return delta;
 }
@@ -197,7 +350,7 @@ function donateCVL(
     require(isValidKeyCVL(key));
     
     // Empty hook data
-    require(isEmptyHookData(hookData));
+    require(isEmptyHookDataCVL(hookData));
 
     return _PoolManager.donate(e, key, amount0, amount1, hookData);
 }
@@ -318,11 +471,13 @@ function fetchProtocolFeeCVL(PoolManager.PoolKey key) returns uint24 {
 
 // TickMath
 
+// Mock of TickMath.getTickAtSqrtPrice() to reduce complexity
 function getTickAtSqrtPriceCVL(uint160 sqrtPriceX96) returns int24 {
 
     int24 tick;
+    require(isValidTickCVL(tick));
 
-    require(sqrtPriceX96 >= MIN_SQRT_PRICE() && sqrtPriceX96 < MAX_SQRT_PRICE());
+    require(isValidSqrtPriceLimitX96CVL(sqrtPriceX96));
 
     return tick;
 }
