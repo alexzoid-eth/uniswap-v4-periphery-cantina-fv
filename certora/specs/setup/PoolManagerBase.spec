@@ -11,6 +11,69 @@ using PoolManagerHarness as _PoolManager;
 
 methods {
 
+    // External functions
+    //  - assume valid pool key inside all external functions except initialize()
+    //  - assume currency can be address(0) - native, ERC20A, ERC20B or ERC20C
+    //  - assume all pools are NATIVE/ERC20B or ERC20A/ERC20B
+    //  - assume hookData length is zero as we don't need 
+
+    function _PoolManager.initialize(
+        PoolManager.PoolKey key, uint160 sqrtPriceX96, bytes hookData
+        ) external returns (int24) with (env e) 
+        => initializeCVL(e, key, sqrtPriceX96, hookData);
+
+    function _PoolManager.modifyLiquidity(
+        PoolManager.PoolKey key, IPoolManager.ModifyLiquidityParams params, bytes hookData
+    ) external returns (PoolManager.BalanceDelta, PoolManager.BalanceDelta) with (env e) 
+        => modifyLiquidityCLV(e, key, params, hookData);
+    
+    function _PoolManager.swap(
+        PoolManager.PoolKey key, IPoolManager.SwapParams params, bytes hookData
+    ) external returns (PoolManager.BalanceDelta) with (env e) 
+        => swapCVL(e, key, params, hookData);
+
+    function _PoolManager.donate(
+        PoolManager.PoolKey key, uint256 amount0, uint256 amount1, bytes hookData
+    ) external returns (PoolManager.BalanceDelta) with (env e) 
+        => donateCVL(e, key, amount0, amount1, hookData);
+
+    function _PoolManager.sync(PoolManager.Currency currency) external with (env e) 
+        => syncCVL(e, currency);
+
+    function _PoolManager.take(PoolManager.Currency currency, address to, uint256 amount) external with (env e) 
+        => takeCVL(e, currency, to, amount);
+
+    function _PoolManager.settle() external returns (uint256) with (env e) 
+        => settleCVL(e);
+
+    function _PoolManager.settleFor(address recipient) external returns (uint256) with (env e) 
+        => settleForCVL(e, recipient);
+
+    function _PoolManager.clear(PoolManager.Currency currency, uint256 amount) external with (env e) 
+        => clearCVL(e, currency, amount);
+
+    function _PoolManager.mint(address to, uint256 id, uint256 amount) external with (env e) 
+        => mintCVL(e, to, id, amount);
+
+    function _PoolManager.burn(address from, uint256 id, uint256 amount) external with (env e) 
+        => burnCVL(e, from, id, amount);
+
+    function _PoolManager.updateDynamicLPFee(PoolManager.PoolKey key, uint24 newDynamicLPFee) external with (env e) 
+        => updateDynamicLPFeeCVL(e, key, newDynamicLPFee);
+
+    function _PoolManager.setProtocolFee(PoolManager.PoolKey key, uint24 newProtocolFee) external with (env e) 
+        => setProtocolFeeCVL(e, key, newProtocolFee);
+
+    function _PoolManager.collectProtocolFees(
+        address recipient, PoolManager.Currency currency, uint256 amount
+    ) external returns (uint256) with (env e) => collectProtocolFeesCVL(e, recipient, currency, amount);
+
+    // unlock() not needed as _handleAction is no-op and summarizing unlock here would have no effect
+    function _PoolManager.unlock(bytes data) external returns (bytes) => NONDET DELETE;
+
+    // setProtocolFeeController() not needed as protocol fee controller summarized as CVL mapping
+    function _PoolManager.setProtocolFeeController(address controller) external => NONDET DELETE;
+
     // extsload()/exttload() summarized in upper lever, should never executes
     function _PoolManager.extsload(bytes32 slot) external returns (bytes32) => NONDET DELETE;
     function _PoolManager.extsload(bytes32 startSlot, uint256 nSlots) external returns (bytes32[]) => NONDET DELETE;
@@ -77,6 +140,10 @@ function isEmptyHookDataCVL(bytes data) returns bool {
 
 function requireNonZeroMsgSenderInInvCVL(env eFunc, env eInv) {
     require(eFunc.msg.sender == eInv.msg.sender);
+    require(isValidEnvCVL(eFunc));
+}
+
+function requireNonZeroMsgSenderCVL(env eFunc) {
     require(isValidEnvCVL(eFunc));
 }
 
@@ -468,63 +535,22 @@ persistent ghost mapping (bytes32 => uint256) ghostPoolsSlot0 {
 
 persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0SqrtPriceX96 {
     init_state axiom forall bytes32 id. ghostPoolsSlot0SqrtPriceX96[id] == 0;
-    axiom forall bytes32 id. ghostPoolsSlot0SqrtPriceX96[id] == SLOT0_UNPACK_SQRT_PRICE_X96(ghostPoolsSlot0[id]);
 }
 
 persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0Tick {
     init_state axiom forall bytes32 id. ghostPoolsSlot0Tick[id] == 0;
-    axiom forall bytes32 id. ghostPoolsSlot0Tick[id] == SLOT0_UNPACK_TICK(ghostPoolsSlot0[id]);
 }
 
 persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0ProtocolFeeZeroForOne {
     init_state axiom forall bytes32 id. ghostPoolsSlot0ProtocolFeeZeroForOne[id] == 0;
-    axiom forall bytes32 id. ghostPoolsSlot0ProtocolFeeZeroForOne[id] == SLOT0_UNPACK_PROTOCOL_FEE_ZERO_FOR_ONE(ghostPoolsSlot0[id]);
 }
 
 persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0ProtocolFeeOneForZero {
     init_state axiom forall bytes32 id. ghostPoolsSlot0ProtocolFeeOneForZero[id] == 0;
-    axiom forall bytes32 id. ghostPoolsSlot0ProtocolFeeOneForZero[id] == SLOT0_UNPACK_PROTOCOL_FEE_ONE_FOR_ZERO(ghostPoolsSlot0[id]);
 }
 
 persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0LpFee {
     init_state axiom forall bytes32 id. ghostPoolsSlot0LpFee[id] == 0;
-    axiom forall bytes32 id. ghostPoolsSlot0LpFee[id] == SLOT0_UNPACK_PROTOCOL_LP_FEE(ghostPoolsSlot0[id]);
-}
-
-// This extracts the least significant 160 bits: 1461501637330902918203684832716283019655932542976 = 2^160
-definition SLOT0_UNPACK_SQRT_PRICE_X96(uint256 val) returns mathint 
-    = val % 1461501637330902918203684832716283019655932542976;
-// This extracts 24 bits starting from bit 160: 16777216 = 2^24
-definition SLOT0_UNPACK_TICK(uint256 val) returns mathint 
-    = (val / 1461501637330902918203684832716283019655932542976) % 16777216;
-// This extracts 12 bits starting from bit 184: 24519928653854221733733552434404946937899825954395709440 = 2^184
-definition SLOT0_UNPACK_PROTOCOL_FEE_ZERO_FOR_ONE(uint256 val) returns mathint 
-    = (val / 24519928653854221733733552434404946937899825954395709440) % 4096; // 4096 = 2^12
-// This extracts 12 bits starting from bit 196: 100388096699363981257046143084224053691439511562563108864 = 2^196
-definition SLOT0_UNPACK_PROTOCOL_FEE_ONE_FOR_ZERO(uint256 val) returns mathint 
-    = (val / 100388096699363981257046143084224053691439511562563108864) % 4096; // 4096 = 2^12
-// This extracts 24 bits starting from bit 208: 411478446743094074709015700739672766947117839185431310336 = 2^208
-definition SLOT0_UNPACK_PROTOCOL_LP_FEE(uint256 val) returns mathint 
-    = (val / 411478446743094074709015700739672766947117839185431310336) % 16777216;
-
-function slot0SqrtPriceX96CVL(bytes32 poolId) returns mathint {
-    return SLOT0_UNPACK_SQRT_PRICE_X96(ghostPoolsSlot0[poolId]);
-}
-
-function slot0TickCVL(bytes32 poolId) returns mathint {
-    return SLOT0_UNPACK_TICK(ghostPoolsSlot0[poolId]);
-}
-
-function slot0ProtocolFeeZeroForOneCVL(bytes32 poolId) returns mathint {
-    return SLOT0_UNPACK_PROTOCOL_FEE_ZERO_FOR_ONE(ghostPoolsSlot0[poolId]);
-}
-
-function slot0ProtocolFeeOneForZeroCVL(bytes32 poolId) returns mathint {
-    return SLOT0_UNPACK_PROTOCOL_FEE_ONE_FOR_ZERO(ghostPoolsSlot0[poolId]);
-}
-
-function Slot0LpFeeCVL(bytes32 poolId) returns mathint {
-    return SLOT0_UNPACK_PROTOCOL_LP_FEE(ghostPoolsSlot0[poolId]);
 }
 
 // Use `.(offset 0)` instead of `.slot0` to bypass bytes32 to uint256 conversion limitation 

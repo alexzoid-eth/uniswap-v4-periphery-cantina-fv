@@ -7,6 +7,7 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {PositionInfo} from "src/libraries/PositionInfoLibrary.sol";
 
 contract HelperCVL {
     
@@ -78,5 +79,9 @@ contract HelperCVL {
 
     function assertOnFailure(bool success) external {
         require(success);
+    }
+
+    function fromPositionInfo(PositionInfo positionInfo) external returns (uint256) {
+        return PositionInfo.unwrap(positionInfo);
     }
 }

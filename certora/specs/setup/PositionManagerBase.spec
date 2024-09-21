@@ -17,14 +17,14 @@ methods {
 
     // Notifier
     function _.notifySubscribe(uint256 tokenId, bytes data) external with (env e) 
-        => notifySubscribeCVL(e, tokenId, data) expect void;
+        => notifySubscribeCVL(e, calledContract, tokenId, data) expect void;
     function _.notifyUnsubscribe(uint256 tokenId) external  with (env e) 
-        => notifyUnsubscribeCVL(e, tokenId) expect void;
+        => notifyUnsubscribeCVL(e, calledContract, tokenId) expect void;
     function _.notifyModifyLiquidity(
         uint256 tokenId, int256 _liquidityChange, PoolManager.BalanceDelta _feesAccrued
-    ) external with (env e) => notifyModifyLiquidityCVL(e, tokenId, _liquidityChange, _feesAccrued) expect void;
+    ) external with (env e) => notifyModifyLiquidityCVL(e, calledContract, tokenId, _liquidityChange, _feesAccrued) expect void;
     function _.notifyTransfer(uint256 tokenId, address previousOwner, address newOwner) external with (env e)
-        => notifyTransferCVL(e, tokenId, previousOwner, newOwner) expect void;
+        => notifyTransferCVL(e, calledContract, tokenId, previousOwner, newOwner) expect void;
 
     // ERC721
     //  - don't care about call to ERC721TokenReceiver from safeTransfer()
@@ -48,6 +48,10 @@ ghost hashTypedDataEIP712(address,bytes32) returns bytes32 {
 
 // Mock notifier calls
 
+persistent ghost address ghostNotifierCalledSubscriber {
+    init_state axiom ghostNotifierCalledSubscriber == 0;
+}
+
 persistent ghost uint256 ghostNotifierTokenId {
     init_state axiom ghostNotifierTokenId == 0;
 }
@@ -68,22 +72,30 @@ persistent ghost address ghostNotifierNewOwner {
     init_state axiom ghostNotifierNewOwner == 0;
 }
 
-function notifySubscribeCVL(env e, uint256 tokenId, bytes data) {
+function notifySubscribeCVL(env e, address subscriber, uint256 tokenId, bytes data) {
     require(data.length == 0);
+    require(subscriber != 0);
+    ghostNotifierCalledSubscriber = subscriber;
     ghostNotifierTokenId = tokenId;
 }
 
-function notifyUnsubscribeCVL(env e, uint256 tokenId)  {
+function notifyUnsubscribeCVL(env e, address subscriber, uint256 tokenId)  {
+    require(subscriber != 0);
+    ghostNotifierCalledSubscriber = subscriber;
     ghostNotifierTokenId = tokenId;
 }
 
-function notifyModifyLiquidityCVL(env e, uint256 tokenId, int256 liquidityChange, PoolManager.BalanceDelta feesAccrued) {
+function notifyModifyLiquidityCVL(env e, address subscriber, uint256 tokenId, int256 liquidityChange, PoolManager.BalanceDelta feesAccrued) {
+    require(subscriber != 0);
+    ghostNotifierCalledSubscriber = subscriber;
     ghostNotifierTokenId = tokenId;
     ghostNotifierLiquidityChange = liquidityChange;
     ghostNotifierFeesAccrued = feesAccrued;
 }
 
-function notifyTransferCVL(env e, uint256 tokenId, address previousOwner, address newOwner) {
+function notifyTransferCVL(env e, address subscriber, uint256 tokenId, address previousOwner, address newOwner) {
+    require(subscriber != 0);
+    ghostNotifierCalledSubscriber = subscriber;
     ghostNotifierTokenId = tokenId;
     ghostNotifierPreviousOwner = previousOwner;
     ghostNotifierNewOwner = newOwner;
@@ -104,7 +116,8 @@ function verifyCVL(address claimedSigner) {
 
 persistent ghost mathint ghostNextTokenId {
     init_state axiom ghostNextTokenId == 1;
-    axiom ghostNextTokenId >= 1 && ghostNextTokenId <= max_uint256;
+    // Avoid overflows via uint128 limitation
+    axiom ghostNextTokenId >= 1 && ghostNextTokenId <= max_uint128;
 }
 
 hook Sload uint256 val _PositionManager.nextTokenId {
@@ -122,30 +135,6 @@ persistent ghost mapping(uint256 => uint256) ghostPositionInfo {
     init_state axiom forall uint256 tokenId. ghostPositionInfo[tokenId] == 0;
 }
 
-persistent ghost mapping (uint256 => uint8) ghostPositionInfoHasSubscriber {
-    init_state axiom forall uint256 tokenId. ghostPositionInfoHasSubscriber[tokenId] == 0;
-    axiom forall uint256 tokenId. ghostPositionInfoHasSubscriber[tokenId] 
-        == POSITION_INFO_UNPACK_HAS_SUBSCRIBER(ghostPositionInfo[tokenId]);
-}
-
-persistent ghost mapping (uint256 => int24) ghostPositionInfoTickLower {
-    init_state axiom forall uint256 tokenId. ghostPositionInfoTickLower[tokenId] == 0;
-    axiom forall uint256 tokenId. ghostPositionInfoTickLower[tokenId] 
-        == POSITION_INFO_UNPACK_TICK_LOWER(ghostPositionInfo[tokenId]);
-}
-
-persistent ghost mapping (uint256 => int24) ghostPositionInfoTickUpper {
-    init_state axiom forall uint256 tokenId. ghostPositionInfoTickUpper[tokenId] == 0;
-    axiom forall uint256 tokenId. ghostPositionInfoTickUpper[tokenId] 
-        == POSITION_INFO_UNPACK_TICK_UPPER(ghostPositionInfo[tokenId]);
-}
-
-persistent ghost mapping (uint256 => mathint) ghostPositionInfoPoolId {
-    init_state axiom forall uint256 tokenId. ghostPositionInfoPoolId[tokenId] == 0;
-    axiom forall uint256 tokenId. ghostPositionInfoPoolId[tokenId] 
-        == POSITION_INFO_UNPACK_POOL_ID(ghostPositionInfo[tokenId]);
-}    
-
 definition IS_EMPTY_POSITION_INFO(uint256 tokenId) returns bool 
     = ghostPositionInfo[tokenId] == EMPTY_POSITION_INFO();
 
@@ -162,20 +151,20 @@ definition POSITION_INFO_UNPACK_TICK_UPPER(uint256 val) returns mathint
 definition POSITION_INFO_UNPACK_POOL_ID(uint256 val) returns mathint 
     = val - (val % 72057594037927936);
 
-function positionInfoHasSubscriberCVL(uint256 tokenId) returns mathint {
-    return POSITION_INFO_UNPACK_HAS_SUBSCRIBER(ghostPositionInfo[tokenId]);
+function positionInfoHasSubscriberCVL(uint256 tokenId) returns bool {
+    return POSITION_INFO_UNPACK_HAS_SUBSCRIBER(ghostPositionInfo[tokenId]) != 0;
 }
 
-function positionInfoTickLowerCVL(uint256 tokenId) returns mathint {
-    return POSITION_INFO_UNPACK_TICK_LOWER(ghostPositionInfo[tokenId]);
+function positionInfoTickLowerCVL(uint256 tokenId) returns int24 {
+    return require_int24(POSITION_INFO_UNPACK_TICK_LOWER(ghostPositionInfo[tokenId]));
 }
 
-function positionInfoTickUpperCVL(uint256 tokenId) returns mathint {
-    return POSITION_INFO_UNPACK_TICK_UPPER(ghostPositionInfo[tokenId]);
+function positionInfoTickUpperCVL(uint256 tokenId) returns int24 {
+    return require_int24(POSITION_INFO_UNPACK_TICK_UPPER(ghostPositionInfo[tokenId]));
 }
 
-function positionInfoPoolIdCVL(uint256 tokenId) returns mathint {
-    return POSITION_INFO_UNPACK_POOL_ID(ghostPositionInfo[tokenId]);
+function positionInfoPoolIdCVL(uint256 tokenId) returns bytes25 {
+    return to_bytes25(require_uint200(POSITION_INFO_UNPACK_POOL_ID(ghostPositionInfo[tokenId])));
 }
 
 hook Sload uint256 val _PositionManager.positionInfo[KEY uint256 tokenId].(offset 0) {
@@ -190,6 +179,7 @@ hook Sstore _PositionManager.positionInfo[KEY uint256 tokenId].(offset 0) uint25
 
 definition ANY_FIELD_OF_POOLS_KEY_SET(bytes25 poolId) returns bool =
     ghostPoolKeysCurrency0[poolId] != 0 
+    || ghostPoolKeysCurrency0[poolId] != 0
     || ghostPoolKeysCurrency1[poolId] != 0
     || ghostPoolKeysFee[poolId] != 0
     || ghostPoolKeysTickSpacing[poolId] != 0
