@@ -111,12 +111,6 @@ function isValidSwapParamsCVL(IPoolManager.SwapParams params) returns bool {
     );
 }
 
-function isValidSqrtPriceLimitX96CVL(uint160 sqrtPriceLimitX96) returns bool {
-    return (
-        sqrtPriceLimitX96 >= MIN_SQRT_PRICE() && sqrtPriceLimitX96 < MAX_SQRT_PRICE()
-    );
-}
-
 // Summarization for external functions 
 
 function initializeCVL(env e, PoolManager.PoolKey key, uint160 sqrtPriceX96, bytes hookData) returns int24 {
@@ -457,8 +451,6 @@ function getTickAtSqrtPriceCVL(uint160 sqrtPriceX96) returns int24 {
     int24 tick;
     require(isValidTickCVL(tick));
 
-    require(isValidSqrtPriceLimitX96CVL(sqrtPriceX96));
-
     return tick;
 }
 
@@ -499,16 +491,21 @@ persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0LpFee {
     axiom forall bytes32 id. ghostPoolsSlot0LpFee[id] == SLOT0_UNPACK_PROTOCOL_LP_FEE(ghostPoolsSlot0[id]);
 }
 
+// This extracts the least significant 160 bits: 1461501637330902918203684832716283019655932542976 = 2^160
 definition SLOT0_UNPACK_SQRT_PRICE_X96(uint256 val) returns mathint 
-    = val & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
+    = val % 1461501637330902918203684832716283019655932542976;
+// This extracts 24 bits starting from bit 160: 16777216 = 2^24
 definition SLOT0_UNPACK_TICK(uint256 val) returns mathint 
-    = (val >> 160) & 0xFFFFFF;
+    = (val / 1461501637330902918203684832716283019655932542976) % 16777216;
+// This extracts 12 bits starting from bit 184: 24519928653854221733733552434404946937899825954395709440 = 2^184
 definition SLOT0_UNPACK_PROTOCOL_FEE_ZERO_FOR_ONE(uint256 val) returns mathint 
-    = (val >> 184) & 0xFFF;
+    = (val / 24519928653854221733733552434404946937899825954395709440) % 4096; // 4096 = 2^12
+// This extracts 12 bits starting from bit 196: 100388096699363981257046143084224053691439511562563108864 = 2^196
 definition SLOT0_UNPACK_PROTOCOL_FEE_ONE_FOR_ZERO(uint256 val) returns mathint 
-    = (val >> 196) & 0xFFF;
+    = (val / 100388096699363981257046143084224053691439511562563108864) % 4096; // 4096 = 2^12
+// This extracts 24 bits starting from bit 208: 411478446743094074709015700739672766947117839185431310336 = 2^208
 definition SLOT0_UNPACK_PROTOCOL_LP_FEE(uint256 val) returns mathint 
-    = (val >> 208) & 0xFFFFFF;
+    = (val / 411478446743094074709015700739672766947117839185431310336) % 16777216;
 
 function slot0SqrtPriceX96CVL(bytes32 poolId) returns mathint {
     return SLOT0_UNPACK_SQRT_PRICE_X96(ghostPoolsSlot0[poolId]);

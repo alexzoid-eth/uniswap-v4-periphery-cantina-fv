@@ -18,6 +18,10 @@ methods {
     function _PositionManager.DOMAIN_SEPARATOR() external returns (bytes32) => CONSTANT DELETE;
 
     // PoolManager summaries
+    //  - assume valid pool key inside all external functions except initialize()
+    //  - assume currency can be address(0) - native, ERC20A, ERC20B or ERC20C
+    //  - assume all pools are NATIVE/ERC20B or ERC20A/ERC20B
+    //  - assume hookData length is zero as we don't need 
 
     function _PoolManager.initialize(
         PoolManager.PoolKey key, uint160 sqrtPriceX96, bytes hookData
@@ -52,7 +56,6 @@ use builtin rule sanity filtered { f -> f.contract == currentContract }
 
 // Execute invariants PoolManagerValidState
 use invariant maxProtocolFeeLimit;
-use invariant validSqrtPriceX96Range;
 
 // Execute invariants PositionManagerValidState
 use invariant validNextTokenId;
@@ -60,8 +63,8 @@ use invariant noInfoForInvalidTokenIds;
 use invariant validPositionTicks;
 use invariant ticksAlignWithSpacing;
 use invariant activePositionsMatchesToken;
-use invariant activePositionsMatchesPoolKey;
-use invariant activePositionsMatchesInitializedPoolInPoolManager;
+use invariant activePositionMatchesPoolKey;
+use invariant activePositionMatchesInitializedPoolInPoolManager;
 use invariant validPoolKeyStructure;
 use invariant subscriberAddressSetWithFlag;
 use invariant subscribersForExistingTokensOnly;

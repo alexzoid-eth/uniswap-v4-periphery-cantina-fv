@@ -149,14 +149,18 @@ persistent ghost mapping (uint256 => mathint) ghostPositionInfoPoolId {
 definition IS_EMPTY_POSITION_INFO(uint256 tokenId) returns bool 
     = ghostPositionInfo[tokenId] == EMPTY_POSITION_INFO();
 
+// This is the least significant 8 bits (256 = 2^8)
 definition POSITION_INFO_UNPACK_HAS_SUBSCRIBER(uint256 val) returns mathint 
-    = val & 0xFF;
+    = val % 256;
+// This is 24 bits (16777216 = 2^24) starting from bit 8
 definition POSITION_INFO_UNPACK_TICK_LOWER(uint256 val) returns mathint 
-    = (val >> 8) & 0xFFFFFF;
+    = (val / 256) % 16777216;
+// This is 24 bits (16777216 = 2^24) starting from bit 32 (4294967296 = 2^32)
 definition POSITION_INFO_UNPACK_TICK_UPPER(uint256 val) returns mathint 
-    = (val >> 32) & 0xFFFFFF;
+    = (val / 4294967296) % 16777216;
+// This is the most significant 200 bits (72057594037927936 = 2^56)
 definition POSITION_INFO_UNPACK_POOL_ID(uint256 val) returns mathint 
-    = val & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000;
+    = val - (val % 72057594037927936);
 
 function positionInfoHasSubscriberCVL(uint256 tokenId) returns mathint {
     return POSITION_INFO_UNPACK_HAS_SUBSCRIBER(ghostPositionInfo[tokenId]);
