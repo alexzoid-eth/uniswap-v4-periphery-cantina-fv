@@ -7,6 +7,12 @@ methods {
     function _HelperCVL.fromCurrency(HelperCVL.Currency) external returns (address) envfree;
     function _HelperCVL.toCurrency(address) external returns (HelperCVL.Currency) envfree;
     function _HelperCVL.poolKeyToId(HelperCVL.PoolKey) external returns (bytes32) envfree;
+    function _HelperCVL.poolKeyVariablesToId(
+        PoolManager.Currency currency0, PoolManager.Currency currency1, uint24 fee, int24 tickSpacing, address hooks
+        ) external returns (bytes32) envfree;
+    function _HelperCVL.poolKeyVariablesToShortId(
+        PoolManager.Currency currency0, PoolManager.Currency currency1, uint24 fee, int24 tickSpacing, address hooks
+        ) external returns (bytes25) envfree;
     function _HelperCVL.positionKey(address,int24,int24,bytes32) external returns (bytes32) envfree;
     function _HelperCVL.amount0(HelperCVL.BalanceDelta) external returns (int128) envfree;
     function _HelperCVL.amount1(HelperCVL.BalanceDelta) external returns (int128) envfree;

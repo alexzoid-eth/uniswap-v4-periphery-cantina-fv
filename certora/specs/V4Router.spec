@@ -23,6 +23,9 @@ methods {
         => settleCVL(e);
 }
 
+// Check if there is at least one path to execute an external function without a revert 
 use builtin rule sanity filtered { f -> f.contract == currentContract }
 
+// Execute invariants from PoolManagerValidState
+use invariant maxProtocolFeeLimit;
 use invariant validSqrtPriceX96Range;

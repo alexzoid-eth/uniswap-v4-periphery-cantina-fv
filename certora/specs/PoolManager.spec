@@ -60,5 +60,8 @@ methods {
 
     // setProtocolFeeController() not needed as protocol fee controller summarized as CVL mapping
     function _PoolManager.setProtocolFeeController(address controller) external => NONDET DELETE;
-
 }
+
+// PoolManagerValidState
+use invariant maxProtocolFeeLimit;
+use invariant validSqrtPriceX96Range;

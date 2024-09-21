@@ -1,5 +1,6 @@
 import "./setup/PositionManagerBase.spec";
 import "./PoolManagerValidState.spec";
+import "./PositionManagerValidState.spec";
 
 methods {
 
@@ -46,4 +47,24 @@ methods {
     ) internal => calculatePositionKeyCVL(owner, tickLower, tickUpper, salt) expect bytes32 ALL;
 }
 
+// Check if there is at least one path to execute an external function without a revert 
 use builtin rule sanity filtered { f -> f.contract == currentContract }
+
+// Execute invariants PoolManagerValidState
+use invariant maxProtocolFeeLimit;
+use invariant validSqrtPriceX96Range;
+
+// Execute invariants PositionManagerValidState
+use invariant validNextTokenId;
+use invariant noInfoForInvalidTokenIds;
+use invariant validPositionTicks;
+use invariant ticksAlignWithSpacing;
+use invariant activePositionsMatchesToken;
+use invariant activePositionsMatchesPoolKey;
+use invariant activePositionsMatchesInitializedPoolInPoolManager;
+use invariant validPoolKeyStructure;
+use invariant subscriberAddressSetWithFlag;
+use invariant subscribersForExistingTokensOnly;
+use invariant noApprovalsForZeroAddress;
+use invariant zeroAddressHasNoBalance;
+use invariant getApprovedForExistingTokensOnly;

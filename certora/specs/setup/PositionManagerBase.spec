@@ -40,9 +40,6 @@ methods {
 
 ///////////////////////////////////////// Functions ////////////////////////////////////////////
 
-// Permit2
-
-
 // ERC721
 ghost hashTypedDataEIP712(address,bytes32) returns bytes32 {
     axiom forall address self. forall bytes32 hash1. forall bytes32 hash2.
@@ -51,11 +48,25 @@ ghost hashTypedDataEIP712(address,bytes32) returns bytes32 {
 
 // Mock notifier calls
 
-persistent ghost uint256 ghostNotifierTokenId;
-persistent ghost int256 ghostNotifierLiquidityChange;
-persistent ghost int256 ghostNotifierFeesAccrued;
-persistent ghost address ghostNotifierPreviousOwner;
-persistent ghost address ghostNotifierNewOwner;
+persistent ghost uint256 ghostNotifierTokenId {
+    init_state axiom ghostNotifierTokenId == 0;
+}
+
+persistent ghost int256 ghostNotifierLiquidityChange {
+    init_state axiom ghostNotifierLiquidityChange == 0;
+}
+
+persistent ghost int256 ghostNotifierFeesAccrued {
+    init_state axiom ghostNotifierFeesAccrued == 0;
+}
+
+persistent ghost address ghostNotifierPreviousOwner {
+    init_state axiom ghostNotifierPreviousOwner == 0;
+}
+
+persistent ghost address ghostNotifierNewOwner {
+    init_state axiom ghostNotifierNewOwner == 0;
+}
 
 function notifySubscribeCVL(env e, uint256 tokenId, bytes data) {
     require(data.length == 0);
@@ -107,27 +118,36 @@ hook Sstore _PositionManager.nextTokenId uint256 val {
 // Ghost copy of `mapping(uint256 tokenId => PositionInfo info) public positionInfo`
 //  - use uint256 value with .(offset 0) hook instead of PositionInfo
 
-persistent ghost mapping(uint256 => uint256) ghostPositionInfo;
-
-persistent ghost mapping (uint256 => mathint) ghostPositionInfoHasSubscriber {
-    init_state axiom forall uint256 id. ghostPositionInfoHasSubscriber[id] == 0;
-    axiom forall uint256 id. ghostPositionInfoHasSubscriber[id] == POSITION_INFO_UNPACK_HAS_SUBSCRIBER(ghostPositionInfo[id]);
+persistent ghost mapping(uint256 => uint256) ghostPositionInfo {
+    init_state axiom forall uint256 tokenId. ghostPositionInfo[tokenId] == 0;
 }
 
-persistent ghost mapping (uint256 => mathint) ghostPositionInfoTickLower {
-    init_state axiom forall uint256 id. ghostPositionInfoTickLower[id] == 0;
-    axiom forall uint256 id. ghostPositionInfoTickLower[id] == POSITION_INFO_UNPACK_TICK_LOWER(ghostPositionInfo[id]);
+persistent ghost mapping (uint256 => uint8) ghostPositionInfoHasSubscriber {
+    init_state axiom forall uint256 tokenId. ghostPositionInfoHasSubscriber[tokenId] == 0;
+    axiom forall uint256 tokenId. ghostPositionInfoHasSubscriber[tokenId] 
+        == POSITION_INFO_UNPACK_HAS_SUBSCRIBER(ghostPositionInfo[tokenId]);
 }
 
-persistent ghost mapping (uint256 => mathint) ghostPositionInfoTickUpper {
-    init_state axiom forall uint256 id. ghostPositionInfoTickUpper[id] == 0;
-    axiom forall uint256 id. ghostPositionInfoTickUpper[id] == POSITION_INFO_UNPACK_TICK_UPPER(ghostPositionInfo[id]);
+persistent ghost mapping (uint256 => int24) ghostPositionInfoTickLower {
+    init_state axiom forall uint256 tokenId. ghostPositionInfoTickLower[tokenId] == 0;
+    axiom forall uint256 tokenId. ghostPositionInfoTickLower[tokenId] 
+        == POSITION_INFO_UNPACK_TICK_LOWER(ghostPositionInfo[tokenId]);
+}
+
+persistent ghost mapping (uint256 => int24) ghostPositionInfoTickUpper {
+    init_state axiom forall uint256 tokenId. ghostPositionInfoTickUpper[tokenId] == 0;
+    axiom forall uint256 tokenId. ghostPositionInfoTickUpper[tokenId] 
+        == POSITION_INFO_UNPACK_TICK_UPPER(ghostPositionInfo[tokenId]);
 }
 
 persistent ghost mapping (uint256 => mathint) ghostPositionInfoPoolId {
-    init_state axiom forall uint256 id. ghostPositionInfoPoolId[id] == 0;
-    axiom forall uint256 id. ghostPositionInfoPoolId[id] == POSITION_INFO_UNPACK_POOL_ID(ghostPositionInfo[id]);
-}
+    init_state axiom forall uint256 tokenId. ghostPositionInfoPoolId[tokenId] == 0;
+    axiom forall uint256 tokenId. ghostPositionInfoPoolId[tokenId] 
+        == POSITION_INFO_UNPACK_POOL_ID(ghostPositionInfo[tokenId]);
+}    
+
+definition IS_EMPTY_POSITION_INFO(uint256 tokenId) returns bool 
+    = ghostPositionInfo[tokenId] == EMPTY_POSITION_INFO();
 
 definition POSITION_INFO_UNPACK_HAS_SUBSCRIBER(uint256 val) returns mathint 
     = val & 0xFF;
@@ -164,9 +184,18 @@ hook Sstore _PositionManager.positionInfo[KEY uint256 tokenId].(offset 0) uint25
 
 // Ghost copy of `mapping(bytes25 poolId => PoolKey poolKey) public poolKeys`
 
+definition ANY_FIELD_OF_POOLS_KEY_SET(bytes25 poolId) returns bool =
+    ghostPoolKeysCurrency0[poolId] != 0 
+    || ghostPoolKeysCurrency1[poolId] != 0
+    || ghostPoolKeysFee[poolId] != 0
+    || ghostPoolKeysTickSpacing[poolId] != 0
+    || ghostPoolKeysHooks[poolId] != 0;
+
 // poolKeys[].currency0
 
-persistent ghost mapping(bytes25 => address) ghostPoolKeysCurrency0;
+persistent ghost mapping(bytes25 => address) ghostPoolKeysCurrency0 {
+    init_state axiom forall bytes25 poolId. ghostPoolKeysCurrency0[poolId] == 0;
+}
 
 hook Sload PoolManager.Currency val _PositionManager.poolKeys[KEY bytes25 poolId].currency0 {
     require(ghostPoolKeysCurrency0[poolId] == val);
@@ -178,7 +207,9 @@ hook Sstore _PositionManager.poolKeys[KEY bytes25 poolId].currency0 PoolManager.
 
 // poolKeys[].currency1
 
-persistent ghost mapping(bytes25 => address) ghostPoolKeysCurrency1;
+persistent ghost mapping(bytes25 => address) ghostPoolKeysCurrency1 {
+    init_state axiom forall bytes25 poolId. ghostPoolKeysCurrency1[poolId] == 0;
+}
 
 hook Sload PoolManager.Currency val _PositionManager.poolKeys[KEY bytes25 poolId].currency1 {
     require(ghostPoolKeysCurrency1[poolId] == val);
@@ -190,7 +221,8 @@ hook Sstore _PositionManager.poolKeys[KEY bytes25 poolId].currency1 PoolManager.
 
 // poolKeys[].fee
 
-persistent ghost mapping(bytes25 => mathint) ghostPoolKeysFee {
+persistent ghost mapping(bytes25 => uint24) ghostPoolKeysFee {
+    init_state axiom forall bytes25 poolId. ghostPoolKeysFee[poolId] == 0;
     axiom forall bytes25 poolId. ghostPoolKeysFee[poolId] >= 0 && ghostPoolKeysFee[poolId] <= max_uint24;
 }
 
@@ -204,7 +236,9 @@ hook Sstore _PositionManager.poolKeys[KEY bytes25 poolId].fee uint24 val {
 
 // poolKeys[].tickSpacing
 
-persistent ghost mapping(bytes25 => int24) ghostPoolKeysTickSpacing;
+persistent ghost mapping(bytes25 => int24) ghostPoolKeysTickSpacing {
+    init_state axiom forall bytes25 poolId. ghostPoolKeysTickSpacing[poolId] == 0;
+}
 
 hook Sload int24 val _PositionManager.poolKeys[KEY bytes25 poolId].tickSpacing {
     require(ghostPoolKeysTickSpacing[poolId] == val);
@@ -216,7 +250,9 @@ hook Sstore _PositionManager.poolKeys[KEY bytes25 poolId].tickSpacing int24 val 
 
 // poolKeys[].hooks
 
-persistent ghost mapping(bytes25 => address) ghostPoolKeysHooks;
+persistent ghost mapping(bytes25 => address) ghostPoolKeysHooks {
+    init_state axiom forall bytes25 keyId. ghostPoolKeysHooks[keyId] == 0;
+}
 
 hook Sload address val _PositionManager.poolKeys[KEY bytes25 poolId].hooks {
     require(ghostPoolKeysHooks[poolId] == val);
@@ -232,7 +268,9 @@ hook Sstore _PositionManager.poolKeys[KEY bytes25 poolId].hooks address val {
 
 // Ghost copy of `mapping(uint256 => address) internal _ownerOf;`
 
-persistent ghost mapping(uint256 => address) ghostERC721OwnerOf;
+persistent ghost mapping(uint256 => address) ghostERC721OwnerOf {
+    init_state axiom forall uint256 tokenId. ghostERC721OwnerOf[tokenId] == 0;
+}
 
 hook Sload address val _PositionManager._ownerOf[KEY uint256 tokenId] {
     require(ghostERC721OwnerOf[tokenId] == val);
@@ -245,7 +283,9 @@ hook Sstore _PositionManager._ownerOf[KEY uint256 tokenId] address val {
 // Ghost copy of `mapping(address => uint256) internal _balanceOf;`
 
 persistent ghost mapping(address => mathint) ghostERC721BalanceOf {
-    axiom forall address owner. ghostERC721BalanceOf[owner] >= 0 && ghostERC721BalanceOf[owner] <= max_uint256;
+    init_state axiom forall address owner. ghostERC721BalanceOf[owner] == 0;
+    // Avoid overflows via uint128 limitation
+    axiom forall address owner. ghostERC721BalanceOf[owner] >= 0 && ghostERC721BalanceOf[owner] <= max_uint128; 
 }
 
 hook Sload uint256 val _PositionManager._balanceOf[KEY address owner] {
@@ -258,7 +298,9 @@ hook Sstore _PositionManager._balanceOf[KEY address owner] uint256 val {
 
 // Ghost copy of `mapping(uint256 => address) public getApproved;`
 
-persistent ghost mapping(uint256 => address) ghostERC721GetApproved;
+persistent ghost mapping(uint256 => address) ghostERC721GetApproved {
+    init_state axiom forall uint256 tokenId. ghostERC721GetApproved[tokenId] == 0;
+}
 
 hook Sload address val _PositionManager.getApproved[KEY uint256 tokenId] {
     require(ghostERC721GetApproved[tokenId] == val);
@@ -270,7 +312,9 @@ hook Sstore _PositionManager.getApproved[KEY uint256 tokenId] address val {
 
 // Ghost copy of `mapping(address => mapping(address => bool)) public isApprovedForAll;`
 
-persistent ghost mapping(address => mapping(address => bool)) ghostERC721IsApprovedForAll;
+persistent ghost mapping(address => mapping(address => bool)) ghostERC721IsApprovedForAll {
+    init_state axiom forall address owner. forall address spender. ghostERC721IsApprovedForAll[owner][spender] == false;
+}
 
 hook Sload bool val _PositionManager.isApprovedForAll[KEY address owner][KEY address operator] {
     require(ghostERC721IsApprovedForAll[owner][operator] == val);
@@ -281,14 +325,34 @@ hook Sstore _PositionManager.isApprovedForAll[KEY address owner][KEY address ope
 }
 
 //
+// Notifier
+//
+
+// Ghost copy of `mapping(uint256 tokenId => ISubscriber subscriber) public subscriber;`
+
+persistent ghost mapping(uint256 => address) ghostNotifierSubscriber {
+    init_state axiom forall uint256 tokenId. ghostNotifierSubscriber[tokenId] == 0;
+}
+
+hook Sload address val _PositionManager.subscriber[KEY uint256 tokenId] {
+    require(ghostNotifierSubscriber[tokenId] == val);
+}
+
+hook Sstore _PositionManager.subscriber[KEY uint256 tokenId] address val {
+    ghostNotifierSubscriber[tokenId] = val;
+}
+
+//
 // UnorderedNonce
 //
 
 // Ghost copy of `mapping(address owner => mapping(uint256 word => uint256 bitmap)) public nonces;`
 
 persistent ghost mapping(address => mapping(uint256 => mathint)) ghostNonces {
+    init_state axiom forall address owner. forall uint256 word. ghostNonces[owner][word] == 0;
+    // Avoid overflows via uint128 limitation
     axiom forall address owner. forall uint256 word. 
-        ghostNonces[owner][word] >= 0 && ghostNonces[owner][word] <= max_uint256;
+        ghostNonces[owner][word] >= 0 && ghostNonces[owner][word] <= max_uint128;
 }
 
 hook Sload uint256 val _PositionManager.nonces[KEY address owner][KEY uint256 word] {
@@ -297,20 +361,4 @@ hook Sload uint256 val _PositionManager.nonces[KEY address owner][KEY uint256 wo
 
 hook Sstore _PositionManager.nonces[KEY address owner][KEY uint256 word] uint256 val {
     ghostNonces[owner][word] = val;
-}
-
-//
-// Notifier
-//
-
-// Ghost copy of `mapping(uint256 tokenId => ISubscriber subscriber) public subscriber;`
-
-persistent ghost mapping(uint256 => address) ghostNotifierSubscriber;
-
-hook Sload address val _PositionManager.subscriber[KEY uint256 tokenId] {
-    require(ghostNotifierSubscriber[tokenId] == val);
-}
-
-hook Sstore _PositionManager.subscriber[KEY uint256 tokenId] address val {
-    ghostNotifierSubscriber[tokenId] = val;
 }

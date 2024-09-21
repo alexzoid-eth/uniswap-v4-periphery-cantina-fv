@@ -75,14 +75,17 @@ function isEmptyHookDataCVL(bytes data) returns bool {
 
 // Valid params
 
+function requireNonZeroMsgSenderInInvCVL(env eFunc, env eInv) {
+    require(eFunc.msg.sender == eInv.msg.sender);
+    require(isValidEnvCVL(eFunc));
+}
+
 function isValidEnvCVL(env e) returns bool {
-    return (e.msg.sender != 0 
-        && e.block.timestamp != 0
-    );
+    return (e.msg.sender != 0);
 }
 
 function isValidKeyCVL(PoolManager.PoolKey poolKey) returns bool {
-    return (// isLimitedKeyCVL(poolKey) && 
+    return (
         (poolKey.currency0 == NATIVE_CURRENCY() || poolKey.currency0 == ghostERC20A)
         && poolKey.currency1 == ghostERC20B
         && poolKey.tickSpacing >= MIN_TICK_SPACING() && poolKey.tickSpacing <= MAX_TICK_SPACING()
@@ -95,7 +98,7 @@ function isValidTickCVL(int24 tick) returns bool {
 }
 
 function isValidTicksCVL(int24 tickLower, int24 tickUpper) returns bool {
-    return (// isLimitedTicksCVL(tickLower, tickUpper) && 
+    return (
         tickLower < tickUpper
         && isValidTickCVL(tickLower)
         && isValidTickCVL(tickUpper)
@@ -103,38 +106,15 @@ function isValidTicksCVL(int24 tickLower, int24 tickUpper) returns bool {
 }
 
 function isValidSwapParamsCVL(IPoolManager.SwapParams params) returns bool {
-    return (// isLimitedSwapParamsCVL(params) && 
+    return (
         params.amountSpecified != 0
     );
 }
 
 function isValidSqrtPriceLimitX96CVL(uint160 sqrtPriceLimitX96) returns bool {
-    return (// isLimitedSqrtPriceLimitX96CVL(sqrtPriceLimitX96) && 
+    return (
         sqrtPriceLimitX96 >= MIN_SQRT_PRICE() && sqrtPriceLimitX96 < MAX_SQRT_PRICE()
     );
-}
-
-// Decrease complexity (NOT USED)
-
-function isLimitedKeyCVL(PoolManager.PoolKey poolKey) returns bool {
-    return (
-        poolKey.tickSpacing >= CUSTOM_MIN_TICK_SPACING() && poolKey.tickSpacing <= CUSTOM_MAX_TICK_SPACING()
-        && poolKey.fee == CUSTOM_POOL_FEE()
-    );
-}
-
-function isLimitedTicksCVL(int24 tickLower, int24 tickUpper) returns bool {
-    return tickLower >= CUSTOM_MIN_TICK() && tickUpper <= CUSTOM_MAX_TICK();
-}
-
-function isLimitedSqrtPriceLimitX96CVL(uint160 sqrtPriceLimitX96) returns bool {
-    return sqrtPriceLimitX96 >= CUSTOM_PRICE_LIMIT_X96_MIN() && sqrtPriceLimitX96 <= CUSTOM_PRICE_LIMIT_X96_MAX();
-}
-
-function isLimitedSwapParamsCVL(IPoolManager.SwapParams params) returns bool {
-    return (isLimitedSqrtPriceLimitX96CVL(params.sqrtPriceLimitX96)
-        && params.amountSpecified >= CUSTOM_SWAP_AMOUNT_MIN() && params.amountSpecified <= CUSTOM_SWAP_AMOUNT_MAX()
-        );
 }
 
 // Summarization for external functions 
@@ -485,7 +465,7 @@ function getTickAtSqrtPriceCVL(uint160 sqrtPriceX96) returns int24 {
 ////////////////////////////////////////// Hooks //////////////////////////////////////////////
 
 //
-// Ghost copy of `mapping(PoolId id => Pool.State) internal _pools;`
+// PoolManager
 //
 
 // _pools[].slot0
@@ -722,6 +702,10 @@ hook Sstore _PoolManager._pools[KEY PoolManager.PoolId i].positions[KEY bytes32 
     ghostPoolsPositionsFeeGrowthInside1LastX128[i][j] = val;
 }
 
+//
+// ProtocolFees
+//
+
 // Ghost copy of `mapping(Currency currency => uint256 amount) public protocolFeesAccrued;`
 
 persistent ghost mapping (address => mathint) ghostProtocolFeesAccrued {
@@ -747,6 +731,10 @@ hook Sload address val _PoolManager.protocolFeeController {
 hook Sstore _PoolManager.protocolFeeController address val {
     ghostProtocolFeeController = val;
 }
+
+//
+// ERC6909
+//
 
 // Ghost copy of `mapping(address owner => mapping(address operator => bool isOperator)) public isOperator;`
 
