@@ -143,8 +143,8 @@ function requireNonZeroMsgSenderInInvCVL(env eFunc, env eInv) {
     require(isValidEnvCVL(eFunc));
 }
 
-function requireNonZeroMsgSenderCVL(env eFunc) {
-    require(isValidEnvCVL(eFunc));
+function requireValidEnvCVL(env e) {
+    require(isValidEnvCVL(e));
 }
 
 function isValidEnvCVL(env e) returns bool {
@@ -593,6 +593,7 @@ hook Sstore _PoolManager._pools[KEY PoolManager.PoolId i].feeGrowthGlobal1X128 u
 // _pools[].liquidity
 
 persistent ghost mapping (bytes32 => mathint) ghostPoolsLiquidity {
+    init_state axiom forall bytes32 i. ghostPoolsLiquidity[i] == 0;
     axiom forall bytes32 i. ghostPoolsLiquidity[i] >= 0 && ghostPoolsLiquidity[i] <= max_uint128;
 }
 
@@ -681,6 +682,7 @@ hook Sstore _PoolManager._pools[KEY PoolManager.PoolId i].tickBitmap[KEY int16 j
 // _pools[].positions[].liquidity
 
 persistent ghost mapping (bytes32 => mapping(bytes32 => mathint)) ghostPoolsPositionsLiquidity {
+    init_state axiom forall bytes32 i. forall bytes32 j. ghostPoolsPositionsLiquidity[i][j] == 0;
     axiom forall bytes32 i. forall bytes32 j. 
         ghostPoolsPositionsLiquidity[i][j] >= 0 && ghostPoolsPositionsLiquidity[i][j] <= max_uint128;
 }

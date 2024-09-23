@@ -52,7 +52,7 @@ persistent ghost address ghostNotifierCalledSubscriber {
     init_state axiom ghostNotifierCalledSubscriber == 0;
 }
 
-persistent ghost uint256 ghostNotifierTokenId {
+persistent ghost mathint ghostNotifierTokenId {
     init_state axiom ghostNotifierTokenId == 0;
 }
 
@@ -72,20 +72,20 @@ persistent ghost address ghostNotifierNewOwner {
     init_state axiom ghostNotifierNewOwner == 0;
 }
 
-function notifySubscribeCVL(env e, address subscriber, uint256 tokenId, bytes data) {
+function notifySubscribeCVL(env e, address subscriber, mathint tokenId, bytes data) {
     require(data.length == 0);
     require(subscriber != 0);
     ghostNotifierCalledSubscriber = subscriber;
     ghostNotifierTokenId = tokenId;
 }
 
-function notifyUnsubscribeCVL(env e, address subscriber, uint256 tokenId)  {
+function notifyUnsubscribeCVL(env e, address subscriber, mathint tokenId)  {
     require(subscriber != 0);
     ghostNotifierCalledSubscriber = subscriber;
     ghostNotifierTokenId = tokenId;
 }
 
-function notifyModifyLiquidityCVL(env e, address subscriber, uint256 tokenId, int256 liquidityChange, PoolManager.BalanceDelta feesAccrued) {
+function notifyModifyLiquidityCVL(env e, address subscriber, mathint tokenId, int256 liquidityChange, PoolManager.BalanceDelta feesAccrued) {
     require(subscriber != 0);
     ghostNotifierCalledSubscriber = subscriber;
     ghostNotifierTokenId = tokenId;
@@ -93,7 +93,7 @@ function notifyModifyLiquidityCVL(env e, address subscriber, uint256 tokenId, in
     ghostNotifierFeesAccrued = feesAccrued;
 }
 
-function notifyTransferCVL(env e, address subscriber, uint256 tokenId, address previousOwner, address newOwner) {
+function notifyTransferCVL(env e, address subscriber, mathint tokenId, address previousOwner, address newOwner) {
     require(subscriber != 0);
     ghostNotifierCalledSubscriber = subscriber;
     ghostNotifierTokenId = tokenId;
@@ -131,11 +131,11 @@ hook Sstore _PositionManager.nextTokenId uint256 val {
 // Ghost copy of `mapping(uint256 tokenId => PositionInfo info) public positionInfo`
 //  - use uint256 value with .(offset 0) hook instead of PositionInfo
 
-persistent ghost mapping(uint256 => uint256) ghostPositionInfo {
-    init_state axiom forall uint256 tokenId. ghostPositionInfo[tokenId] == 0;
+persistent ghost mapping(mathint => uint256) ghostPositionInfo {
+    init_state axiom forall mathint tokenId. ghostPositionInfo[tokenId] == 0;
 }
 
-definition IS_EMPTY_POSITION_INFO(uint256 tokenId) returns bool 
+definition IS_EMPTY_POSITION_INFO(mathint tokenId) returns bool 
     = ghostPositionInfo[tokenId] == EMPTY_POSITION_INFO();
 
 // This is the least significant 8 bits (256 = 2^8)
@@ -151,19 +151,19 @@ definition POSITION_INFO_UNPACK_TICK_UPPER(uint256 val) returns mathint
 definition POSITION_INFO_UNPACK_POOL_ID(uint256 val) returns mathint 
     = val - (val % 72057594037927936);
 
-function positionInfoHasSubscriberCVL(uint256 tokenId) returns bool {
+function positionInfoHasSubscriberCVL(mathint tokenId) returns bool {
     return POSITION_INFO_UNPACK_HAS_SUBSCRIBER(ghostPositionInfo[tokenId]) != 0;
 }
 
-function positionInfoTickLowerCVL(uint256 tokenId) returns int24 {
+function positionInfoTickLowerCVL(mathint tokenId) returns int24 {
     return require_int24(POSITION_INFO_UNPACK_TICK_LOWER(ghostPositionInfo[tokenId]));
 }
 
-function positionInfoTickUpperCVL(uint256 tokenId) returns int24 {
+function positionInfoTickUpperCVL(mathint tokenId) returns int24 {
     return require_int24(POSITION_INFO_UNPACK_TICK_UPPER(ghostPositionInfo[tokenId]));
 }
 
-function positionInfoPoolIdCVL(uint256 tokenId) returns bytes25 {
+function positionInfoPoolIdCVL(mathint tokenId) returns bytes25 {
     return to_bytes25(require_uint200(POSITION_INFO_UNPACK_POOL_ID(ghostPositionInfo[tokenId])));
 }
 
@@ -262,8 +262,8 @@ hook Sstore _PositionManager.poolKeys[KEY bytes25 poolId].hooks address val {
 
 // Ghost copy of `mapping(uint256 => address) internal _ownerOf;`
 
-persistent ghost mapping(uint256 => address) ghostERC721OwnerOf {
-    init_state axiom forall uint256 tokenId. ghostERC721OwnerOf[tokenId] == 0;
+persistent ghost mapping(mathint => address) ghostERC721OwnerOf {
+    init_state axiom forall mathint tokenId. ghostERC721OwnerOf[tokenId] == 0;
 }
 
 hook Sload address val _PositionManager._ownerOf[KEY uint256 tokenId] {
@@ -292,8 +292,8 @@ hook Sstore _PositionManager._balanceOf[KEY address owner] uint256 val {
 
 // Ghost copy of `mapping(uint256 => address) public getApproved;`
 
-persistent ghost mapping(uint256 => address) ghostERC721GetApproved {
-    init_state axiom forall uint256 tokenId. ghostERC721GetApproved[tokenId] == 0;
+persistent ghost mapping(mathint => address) ghostERC721GetApproved {
+    init_state axiom forall mathint tokenId. ghostERC721GetApproved[tokenId] == 0;
 }
 
 hook Sload address val _PositionManager.getApproved[KEY uint256 tokenId] {
@@ -324,8 +324,8 @@ hook Sstore _PositionManager.isApprovedForAll[KEY address owner][KEY address ope
 
 // Ghost copy of `mapping(uint256 tokenId => ISubscriber subscriber) public subscriber;`
 
-persistent ghost mapping(uint256 => address) ghostNotifierSubscriber {
-    init_state axiom forall uint256 tokenId. ghostNotifierSubscriber[tokenId] == 0;
+persistent ghost mapping(mathint => address) ghostNotifierSubscriber {
+    init_state axiom forall mathint tokenId. ghostNotifierSubscriber[tokenId] == 0;
 }
 
 hook Sload address val _PositionManager.subscriber[KEY uint256 tokenId] {
@@ -342,7 +342,7 @@ hook Sstore _PositionManager.subscriber[KEY uint256 tokenId] address val {
 
 // Ghost copy of `mapping(address owner => mapping(uint256 word => uint256 bitmap)) public nonces;`
 
-persistent ghost mapping(address => mapping(uint256 => mathint)) ghostNonces {
+persistent ghost mapping(address => mapping(uint256 => uint256)) ghostNonces {
     init_state axiom forall address owner. forall uint256 word. ghostNonces[owner][word] == 0;
     // Avoid overflows via uint128 limitation
     axiom forall address owner. forall uint256 word. 
@@ -350,7 +350,7 @@ persistent ghost mapping(address => mapping(uint256 => mathint)) ghostNonces {
 }
 
 hook Sload uint256 val _PositionManager.nonces[KEY address owner][KEY uint256 word] {
-    require(require_uint256(ghostNonces[owner][word]) == val);
+    require(ghostNonces[owner][word] == val);
 }
 
 hook Sstore _PositionManager.nonces[KEY address owner][KEY uint256 word] uint256 val {
