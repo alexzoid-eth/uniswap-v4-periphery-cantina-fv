@@ -21,4 +21,4 @@ definition MAX_PROTOCOL_FEE() returns mathint = 1000;
 
 // PositionManager
 
-definition EMPTY_POSITION_INFO() returns mathint = 0;
+definition EMPTY_POSITION_INFO() returns uint256 = 0;

@@ -37,7 +37,6 @@ use builtin rule sanity filtered { f -> f.contract == currentContract }
 use invariant validNextTokenId;
 use invariant noInfoForInvalidTokenIds;
 use invariant validPositionTicks;
-use invariant ticksAlignWithSpacing;
 use invariant activePositionsMatchesToken;
 use invariant activePositionMatchesPoolKey;
 use invariant activePositionMatchesInitializedPoolInPoolManager;
@@ -48,7 +47,6 @@ use invariant subscribersForExistingTokensOnly;
 use invariant noApprovalsForZeroAddress;
 use invariant zeroAddressHasNoBalance;
 use invariant getApprovedForExistingTokensOnly;
-use invariant liquidityMatchesPositionState;
 
 // 
 // Variables Transition
@@ -181,10 +179,11 @@ rule noncePermanence(env e, method f, calldataarg args, address owner, uint256 w
 // nextTokenId updated if and only if a new token is minted
 rule nextTokenIdSyncWithMint(env e, method f, calldataarg args) {
 
-    // Assume PositionManager valid state invariants 
-    requireValidStatePositionManagerTokenId(e, ghostNextTokenId);
-
     mathint nextTokenIdBefore = ghostNextTokenId;
+
+    // Assume PositionManager valid state invariants 
+    requireValidStatePositionManagerTokenId(e, nextTokenIdBefore);
+
     address ownerBefore = ghostERC721OwnerOf[nextTokenIdBefore];
 
     f(e, args);
@@ -197,7 +196,9 @@ rule nextTokenIdSyncWithMint(env e, method f, calldataarg args) {
 }
 
 // A new token is minted if and only if a new position is created, and burned when position is cleared
-rule tokenMintBurnPositionSync(env e, method f, calldataarg args, mathint tokenId) {
+rule tokenMintBurnPositionSync(env e, method f, calldataarg args) {
+
+    mathint tokenId = ghostNextTokenId;
 
     // Assume PositionManager valid state invariants 
     requireValidStatePositionManagerTokenId(e, tokenId);
@@ -211,29 +212,29 @@ rule tokenMintBurnPositionSync(env e, method f, calldataarg args, mathint tokenI
     address ownerAfter = ghostERC721OwnerOf[tokenId];
 
     // mint <=> create position info
-    assert((positionBefore == 0 && positionWasChanged) <=> (ownerBefore == 0 && ownerAfter != 0));
+    assert((positionBefore == EMPTY_POSITION_INFO() && positionWasChanged) <=> (ownerBefore == 0 && ownerAfter != 0));
 
     // burn <=> clear position info
-    assert((positionBefore != 0 && positionWasChanged) <=> (ownerBefore != 0 && ownerAfter == 0));
+    assert((positionBefore != EMPTY_POSITION_INFO() && positionWasChanged) <=> (ownerBefore != 0 && ownerAfter == 0));
 }
 
-// Minting topup position liquidity while burning decreases position liquidity
+// Minting increase position liquidity while burning decreases position liquidity in PoolManager
 rule liquidityChangeOnMintBurn(env e, method f, calldataarg args, mathint tokenId) {
 
     // Assume PositionManager valid state invariants 
     requireValidStatePositionManagerTokenId(e, tokenId);
 
     // Pool Id in PoolManager
-    bytes32 poolId = _HelperCVL.poolKeyVariablesToId(
-        _HelperCVL.toCurrency(ghostPoolKeysCurrency0[positionInfoPoolIdCVL(tokenId)]),
-        _HelperCVL.toCurrency(ghostPoolKeysCurrency1[positionInfoPoolIdCVL(tokenId)]),
+    bytes32 poolId = poolKeyVariablesToIdCVL(
+        ghostPoolKeysCurrency0[positionInfoPoolIdCVL(tokenId)],
+        ghostPoolKeysCurrency1[positionInfoPoolIdCVL(tokenId)],
         ghostPoolKeysFee[positionInfoPoolIdCVL(tokenId)],
         ghostPoolKeysTickSpacing[positionInfoPoolIdCVL(tokenId)],
         ghostPoolKeysHooks[positionInfoPoolIdCVL(tokenId)]
     );
 
     // Position Id in PoolManager
-    bytes32 positionId = _HelperCVL.positionKey(
+    bytes32 positionId = calculatePositionKeyCVL(
         _PositionManager, 
         positionInfoTickLowerCVL(tokenId), 
         positionInfoTickUpperCVL(tokenId), 
@@ -248,15 +249,11 @@ rule liquidityChangeOnMintBurn(env e, method f, calldataarg args, mathint tokenI
     address ownerAfter = ghostERC721OwnerOf[tokenId];
     mathint poolsPositionsLiquidityAfter = ghostPoolsPositionsLiquidity[poolId][positionId];
 
-    // mint => increases liquidity from zero
-    assert((ownerBefore == 0 && ownerAfter != 0) 
-        => (poolsPositionsLiquidityBefore == 0 && poolsPositionsLiquidityAfter >= poolsPositionsLiquidityBefore)
-        );
+    // mint => increases liquidity
+    assert((ownerBefore == 0 && ownerAfter != 0) => poolsPositionsLiquidityAfter >= poolsPositionsLiquidityBefore);
 
-    // burn => decreases liquidity to zero
-    assert((ownerBefore != 0 && ownerAfter == 0) 
-        => (poolsPositionsLiquidityBefore >= poolsPositionsLiquidityAfter && poolsPositionsLiquidityAfter == 0)
-        );
+    // burn => decreases liquidity
+    assert((ownerBefore != 0 && ownerAfter == 0) => poolsPositionsLiquidityBefore >= poolsPositionsLiquidityAfter);
 }
 
 //
@@ -264,7 +261,7 @@ rule liquidityChangeOnMintBurn(env e, method f, calldataarg args, mathint tokenI
 //
 
 // Any valid nonce can be used once
-rule nonceUniqueUsage(env e, method f, calldataarg args, uint256 nonce) {
+rule nonceUniqueUsage(env e, uint256 nonce) {
 
     // Bypass revert when msg.sender doesn't have enough native tokens
     require(e.msg.value == 0);

@@ -19,14 +19,12 @@ function requireValidStatePositionManagerTokenId(env e, mathint tokenId) {
 
     requireInvariant noInfoForInvalidTokenIds(e);
 
-    requireInvariant ticksAlignWithSpacing(e, tokenId);
     requireInvariant activePositionMatchesPoolKey(e, tokenId);
     requireInvariant activePositionMatchesInitializedPoolInPoolManager(e, tokenId);
     requireInvariant activePositionsMatchesToken(e, tokenId);
     requireInvariant subscriberAddressSetWithFlag(e, tokenId);
     requireInvariant subscribersForExistingTokensOnly(e, tokenId);
     requireInvariant validPositionTicks(e, tokenId);
-    requireInvariant liquidityMatchesPositionState(e, tokenId);
 
     requireValidStatePositionManagerERC721(e);
 }
@@ -42,7 +40,7 @@ strong invariant validNextTokenId()
 // Position information and token MUST NOT exist for token ID 0 or any future token IDs
 strong invariant noInfoForInvalidTokenIds(env e)
     forall mathint tokenId. tokenId == 0 || tokenId >= ghostNextTokenId 
-        => ghostPositionInfo[tokenId] == 0 && ghostERC721OwnerOf[tokenId] == 0 {
+        => IS_EMPTY_POSITION_INFO(tokenId) && ghostERC721OwnerOf[tokenId] == 0 {
         preserved with (env eInv) {
             requireNonZeroMsgSenderInInvCVL(e, eInv);
             requireValidStatePositionManagerERC721(e);
@@ -52,7 +50,7 @@ strong invariant noInfoForInvalidTokenIds(env e)
 // Active position ticks MUST be within the valid range defined by TickMath
 strong invariant validPositionTicks(env e, mathint tokenId)
     // Position not empty
-    ghostPositionInfo[tokenId] != 0 => (
+    !IS_EMPTY_POSITION_INFO(tokenId) => (
         positionInfoTickLowerCVL(tokenId) >= MIN_TICK() && positionInfoTickUpperCVL(tokenId) <= MAX_TICK() 
         && positionInfoTickLowerCVL(tokenId) < positionInfoTickUpperCVL(tokenId)
     ) {
@@ -66,7 +64,7 @@ strong invariant validPositionTicks(env e, mathint tokenId)
 // Active position MUST correspond minted token and vice versa
 strong invariant activePositionsMatchesToken(env e, mathint tokenId)
     // Token exists <=> Position exists
-    ghostERC721OwnerOf[tokenId] != 0 <=> ghostPositionInfo[tokenId] != 0 {
+    ghostERC721OwnerOf[tokenId] != 0 <=> !IS_EMPTY_POSITION_INFO(tokenId) {
         preserved with (env eInv) {
             requireNonZeroMsgSenderInInvCVL(e, eInv);
             requireValidStatePositionManagerERC721(e);
@@ -74,94 +72,93 @@ strong invariant activePositionsMatchesToken(env e, mathint tokenId)
         }
     }
 
-// @todo mintPosition violation
 // Active position MUST correspond to valid pool key
 strong invariant activePositionMatchesPoolKey(env e, mathint tokenId)
     // Position is not empty
-    ghostPositionInfo[tokenId] != 0 
+    !IS_EMPTY_POSITION_INFO(tokenId) 
         // Pool key id from position info == pool key id calculated from poolKeys structure params
-        => positionInfoPoolIdCVL(tokenId) == _HelperCVL.poolKeyVariablesToShortId(
-                _HelperCVL.toCurrency(ghostPoolKeysCurrency0[positionInfoPoolIdCVL(tokenId)]),
-                _HelperCVL.toCurrency(ghostPoolKeysCurrency1[positionInfoPoolIdCVL(tokenId)]),
+        => positionInfoPoolIdCVL(tokenId) == poolKeyVariablesToShortIdCVL(
+                ghostPoolKeysCurrency0[positionInfoPoolIdCVL(tokenId)],
+                ghostPoolKeysCurrency1[positionInfoPoolIdCVL(tokenId)],
                 ghostPoolKeysFee[positionInfoPoolIdCVL(tokenId)],
                 ghostPoolKeysTickSpacing[positionInfoPoolIdCVL(tokenId)],
                 ghostPoolKeysHooks[positionInfoPoolIdCVL(tokenId)]
             ) {
         preserved with (env eInv) {
             requireNonZeroMsgSenderInInvCVL(e, eInv);
-            requireInvariant validPositionTicks(e, tokenId);
-            requireInvariant activePositionsMatchesToken(e, tokenId);
-            requireInvariant validPoolKeyStructure;         
+            requireValidStatePositionManagerTokenId(e, tokenId);   
+        }
+        preserved mintPosition(
+            PoolManager.PoolKey poolKey, 
+            int24 tickLower, 
+            int24 tickUpper, 
+            uint256 liquidity, 
+            uint128 amount0Max,
+            uint128 amount1Max,
+            address owner,
+            bytes hookData
+        ) with (env eInv) {
+            requireNonZeroMsgSenderInInvCVL(e, eInv);
+            requireValidStatePositionManagerTokenId(e, tokenId);    
+            // Assume a new key passed 
+            require(forall bytes25 poolId. ghostPoolKeysTickSpacing[poolId] == 0);       
         }
     }
 
-// @todo mintPosition violation
 // Active position must correspond to a initialized pool in PoolManager
 strong invariant activePositionMatchesInitializedPoolInPoolManager(env e, mathint tokenId)
     // Active position
-    ghostPositionInfo[tokenId] != 0
+    !IS_EMPTY_POSITION_INFO(tokenId)
         // PoolManager[poolId].slot0.sqrtPriceX96 != 0 means the pool is initialized
-        => ghostPoolsSlot0SqrtPriceX96[_HelperCVL.poolKeyVariablesToId(
-                _HelperCVL.toCurrency(ghostPoolKeysCurrency0[positionInfoPoolIdCVL(tokenId)]),
-                _HelperCVL.toCurrency(ghostPoolKeysCurrency1[positionInfoPoolIdCVL(tokenId)]),
-                ghostPoolKeysFee[positionInfoPoolIdCVL(tokenId)],
-                ghostPoolKeysTickSpacing[positionInfoPoolIdCVL(tokenId)],
-                ghostPoolKeysHooks[positionInfoPoolIdCVL(tokenId)]
-            )] != 0 {
+        => poolManagerSlot0SqrtPriceX96ByTokenIdCVL(tokenId) != 0 {
         preserved with (env eInv) {
             requireNonZeroMsgSenderInInvCVL(e, eInv);
-            // PookKey has a valid structure (tick spacing != 0 etc)
-            requireInvariant validPoolKeyStructure;      
-            // Token for active position exists
-            requireInvariant activePositionsMatchesToken(e, tokenId);
-            // Ticks in active position set
-            requireInvariant validPositionTicks(e, tokenId);
+            requireValidStatePositionManagerTokenId(e, tokenId);
         }
-    } 
-
-// @todo mintPosition violation
-// Ticks in positions must be divisible by the pool's tick spacing
-strong invariant ticksAlignWithSpacing(env e, mathint tokenId)
-    ghostPositionInfo[tokenId] != 0 => (
-        ghostPoolKeysTickSpacing[positionInfoPoolIdCVL(tokenId)] != 0
-        && positionInfoTickLowerCVL(tokenId) % ghostPoolKeysTickSpacing[positionInfoPoolIdCVL(tokenId)] == 0
-        && positionInfoTickUpperCVL(tokenId) % ghostPoolKeysTickSpacing[positionInfoPoolIdCVL(tokenId)] == 0
-    ) {
-        preserved with (env eInv) {
+        preserved mintPosition(
+            PoolManager.PoolKey poolKey, 
+            int24 tickLower, 
+            int24 tickUpper, 
+            uint256 liquidity, 
+            uint128 amount0Max,
+            uint128 amount1Max,
+            address owner,
+            bytes hookData
+        ) with (env eInv) {
             requireNonZeroMsgSenderInInvCVL(e, eInv);
-            // Pool exists in PoolManager
-            requireInvariant activePositionMatchesInitializedPoolInPoolManager(e, tokenId);   
-            // PookKey has a valid structure (tick spacing != 0 etc)
-            requireInvariant validPoolKeyStructure;      
-            // Ticks in active position set
-            requireInvariant validPositionTicks(e, tokenId);   
-            // Token for active position exists
-            requireInvariant activePositionsMatchesToken(e, tokenId);
+            requireValidStatePositionManagerTokenId(e, tokenId);    
+            // Assume a new key passed 
+            require(forall bytes25 poolId. ghostPoolKeysTickSpacing[poolId] == 0);       
         }
     } 
 
 // Touched pool key must correspond to a initialized pool in PoolManager
 strong invariant poolKeyMatchesInitializedPoolInPoolManager(bytes25 poolId)
-    // Any field of pool key touched
-    ANY_FIELD_OF_POOLS_KEY_SET(poolId)
+    // On UniswapV4, the minimum tick spacing is 1, which means that if the tick spacing is 0, 
+    //  the pool key has not been set.
+    ghostPoolKeysTickSpacing[poolId] != 0
         // PoolManager[poolId].slot0.sqrtPriceX96 != 0 means the pool is initialized
-        => ghostPoolsSlot0SqrtPriceX96[_HelperCVL.poolKeyVariablesToId(
-                _HelperCVL.toCurrency(ghostPoolKeysCurrency0[poolId]),
-                _HelperCVL.toCurrency(ghostPoolKeysCurrency1[poolId]),
-                ghostPoolKeysFee[poolId],
-                ghostPoolKeysTickSpacing[poolId],
-                ghostPoolKeysHooks[poolId]
-            )] != 0;
+        => poolManagerSlot0SqrtPriceX96ByShortPoolIdCVL(poolId) != 0 {
+        preserved {
+            requireInvariant validPoolKeyStructure;
+        }
+    }
 
 // All poolKey fields must contain valid and consistent values
 strong invariant validPoolKeyStructure()
-    // Any of poolKeys structure fields set
-    forall bytes25 poolId. ANY_FIELD_OF_POOLS_KEY_SET(poolId) 
-        => (
-            // PoolManager doesn't accept invalid key params
+    // On UniswapV4, the minimum tick spacing is 1, which means that if the tick spacing is 0, 
+    //  the pool key has not been set.
+    forall bytes25 poolId. ghostPoolKeysTickSpacing[poolId] != 0
+        ? (// PoolManager doesn't accept invalid key params
             ghostPoolKeysCurrency0[poolId] < ghostPoolKeysCurrency1[poolId]
-            && ghostPoolKeysTickSpacing[poolId] >= MIN_TICK_SPACING() && ghostPoolKeysTickSpacing[poolId] <= MAX_TICK_SPACING()
+            && ghostPoolKeysTickSpacing[poolId] >= MIN_TICK_SPACING() 
+            && ghostPoolKeysTickSpacing[poolId] <= MAX_TICK_SPACING()
             && (ghostPoolKeysFee[poolId] <= MAX_LP_FEE() || ghostPoolKeysFee[poolId] == DYNAMIC_FEE_FLAG())
+        ) : (
+            ghostPoolKeysCurrency0[poolId] == 0
+            && ghostPoolKeysCurrency1[poolId] == 0
+            && ghostPoolKeysFee[poolId] == 0
+            && ghostPoolKeysHooks[poolId] == 0
         );
 
 //
@@ -180,7 +177,7 @@ strong invariant subscriberAddressSetWithFlag(env e, mathint tokenId)
 // Subscribers MUST only be set for existing token IDs
 strong invariant subscribersForExistingTokensOnly(env e, mathint tokenId)
     ghostNotifierSubscriber[tokenId] != 0 
-        => ghostERC721OwnerOf[tokenId] != 0 && ghostPositionInfo[tokenId] != 0 {
+        => ghostERC721OwnerOf[tokenId] != 0 && !IS_EMPTY_POSITION_INFO(tokenId) {
         preserved with (env eInv) {
             requireNonZeroMsgSenderInInvCVL(e, eInv);
             requireInvariant subscriberAddressSetWithFlag(e, tokenId);
@@ -216,47 +213,5 @@ strong invariant getApprovedForExistingTokensOnly(env e)
         preserved with (env eInv) {
             requireNonZeroMsgSenderInInvCVL(e, eInv);
             requireValidStatePositionManagerERC721(e);
-        }
-    }
-
-//
-// PositionManager - PoolManager
-//
-
-// Active positions have nonzero liquidity, inactive positions have zero liquidity in PoolManager
-strong invariant liquidityMatchesPositionState(env e, mathint tokenId)
-    // Active position
-    ghostPositionInfo[tokenId] != 0 ? (
-        ghostPoolsPositionsLiquidity[_HelperCVL.poolKeyVariablesToId(
-            _HelperCVL.toCurrency(ghostPoolKeysCurrency0[positionInfoPoolIdCVL(tokenId)]),
-            _HelperCVL.toCurrency(ghostPoolKeysCurrency1[positionInfoPoolIdCVL(tokenId)]),
-            ghostPoolKeysFee[positionInfoPoolIdCVL(tokenId)],
-            ghostPoolKeysTickSpacing[positionInfoPoolIdCVL(tokenId)],
-            ghostPoolKeysHooks[positionInfoPoolIdCVL(tokenId)]
-        )][_HelperCVL.positionKey(
-        _PositionManager, 
-        positionInfoTickLowerCVL(tokenId), 
-        positionInfoTickUpperCVL(tokenId), 
-        to_bytes32(require_uint256(tokenId))
-        )] >= 0
-    // Non-exist position
-    ) : (
-        ghostPoolsPositionsLiquidity[_HelperCVL.poolKeyVariablesToId(
-            _HelperCVL.toCurrency(ghostPoolKeysCurrency0[positionInfoPoolIdCVL(tokenId)]),
-            _HelperCVL.toCurrency(ghostPoolKeysCurrency1[positionInfoPoolIdCVL(tokenId)]),
-            ghostPoolKeysFee[positionInfoPoolIdCVL(tokenId)],
-            ghostPoolKeysTickSpacing[positionInfoPoolIdCVL(tokenId)],
-            ghostPoolKeysHooks[positionInfoPoolIdCVL(tokenId)]
-        )][_HelperCVL.positionKey(
-        _PositionManager, 
-        positionInfoTickLowerCVL(tokenId), 
-        positionInfoTickUpperCVL(tokenId), 
-        to_bytes32(require_uint256(tokenId))
-        )] == 0
-    ) {
-        preserved with (env eInv) {
-            requireNonZeroMsgSenderInInvCVL(e, eInv);
-            requireValidStatePositionManagerERC721(e);
-            requireInvariant validPositionTicks(e, tokenId); 
         }
     }

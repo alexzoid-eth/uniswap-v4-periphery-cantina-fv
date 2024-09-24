@@ -129,61 +129,23 @@ hook Sstore _PositionManager.nextTokenId uint256 val {
 }
 
 // Ghost copy of `mapping(uint256 tokenId => PositionInfo info) public positionInfo`
-//  - use uint256 value with .(offset 0) hook instead of PositionInfo
 
-persistent ghost mapping(mathint => uint256) ghostPositionInfo {
+persistent ghost mapping(mathint => PositionManagerHarness.PositionInfo) ghostPositionInfo {
     init_state axiom forall mathint tokenId. ghostPositionInfo[tokenId] == 0;
 }
 
 definition IS_EMPTY_POSITION_INFO(mathint tokenId) returns bool 
     = ghostPositionInfo[tokenId] == EMPTY_POSITION_INFO();
 
-// This is the least significant 8 bits (256 = 2^8)
-definition POSITION_INFO_UNPACK_HAS_SUBSCRIBER(uint256 val) returns mathint 
-    = val % 256;
-// This is 24 bits (16777216 = 2^24) starting from bit 8
-definition POSITION_INFO_UNPACK_TICK_LOWER(uint256 val) returns mathint 
-    = (val / 256) % 16777216;
-// This is 24 bits (16777216 = 2^24) starting from bit 32 (4294967296 = 2^32)
-definition POSITION_INFO_UNPACK_TICK_UPPER(uint256 val) returns mathint 
-    = (val / 4294967296) % 16777216;
-// This is the most significant 200 bits (72057594037927936 = 2^56)
-definition POSITION_INFO_UNPACK_POOL_ID(uint256 val) returns mathint 
-    = val - (val % 72057594037927936);
-
-function positionInfoHasSubscriberCVL(mathint tokenId) returns bool {
-    return POSITION_INFO_UNPACK_HAS_SUBSCRIBER(ghostPositionInfo[tokenId]) != 0;
-}
-
-function positionInfoTickLowerCVL(mathint tokenId) returns int24 {
-    return require_int24(POSITION_INFO_UNPACK_TICK_LOWER(ghostPositionInfo[tokenId]));
-}
-
-function positionInfoTickUpperCVL(mathint tokenId) returns int24 {
-    return require_int24(POSITION_INFO_UNPACK_TICK_UPPER(ghostPositionInfo[tokenId]));
-}
-
-function positionInfoPoolIdCVL(mathint tokenId) returns bytes25 {
-    return to_bytes25(require_uint200(POSITION_INFO_UNPACK_POOL_ID(ghostPositionInfo[tokenId])));
-}
-
-hook Sload uint256 val _PositionManager.positionInfo[KEY uint256 tokenId].(offset 0) {
+hook Sload PositionManagerHarness.PositionInfo val _PositionManager.positionInfo[KEY uint256 tokenId] {
     require(ghostPositionInfo[tokenId] == val);
 }
 
-hook Sstore _PositionManager.positionInfo[KEY uint256 tokenId].(offset 0) uint256 val {
+hook Sstore _PositionManager.positionInfo[KEY uint256 tokenId] PositionManagerHarness.PositionInfo val {
     ghostPositionInfo[tokenId] = val;
 }
 
 // Ghost copy of `mapping(bytes25 poolId => PoolKey poolKey) public poolKeys`
-
-definition ANY_FIELD_OF_POOLS_KEY_SET(bytes25 poolId) returns bool =
-    ghostPoolKeysCurrency0[poolId] != 0 
-    || ghostPoolKeysCurrency0[poolId] != 0
-    || ghostPoolKeysCurrency1[poolId] != 0
-    || ghostPoolKeysFee[poolId] != 0
-    || ghostPoolKeysTickSpacing[poolId] != 0
-    || ghostPoolKeysHooks[poolId] != 0;
 
 // poolKeys[].currency0
 

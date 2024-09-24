@@ -7,7 +7,8 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
-import {PositionInfo} from "src/libraries/PositionInfoLibrary.sol";
+import {PositionInfoLibrary, PositionInfo} from "src/libraries/PositionInfoLibrary.sol";
+import {Slot0, Slot0Library} from "@uniswap/v4-core/src/types/Slot0.sol";
 
 contract HelperCVL {
     
@@ -31,45 +32,10 @@ contract HelperCVL {
         return BalanceDeltaLibrary.amount1(balanceDelta);
     }
 
-    function poolKeyToId(PoolKey memory poolKey) external pure returns (bytes32) {
-        return keccak256(abi.encode(poolKey));
-    }
-
-    function poolKeyVariablesToId(
-        Currency currency0,
-        Currency currency1,
-        uint24 fee,
-        int24 tickSpacing,
-        IHooks hooks
-    ) public pure returns (bytes32) {
-        PoolKey memory poolKey = PoolKey({
-            currency0: currency0,
-            currency1: currency1,
-            fee: fee,
-            tickSpacing: tickSpacing,
-            hooks: hooks
-        });
-        return keccak256(abi.encode(poolKey));
-    }
-
-    function poolKeyVariablesToShortId(
-        Currency currency0,
-        Currency currency1,
-        uint24 fee,
-        int24 tickSpacing,
-        IHooks hooks
-    ) external pure returns (bytes25) {
-        return bytes25(uint200(uint256(poolKeyVariablesToId(currency0, currency1, fee, tickSpacing, hooks))));
-    }
-    
-    function positionKey(address owner, int24 tickLower, int24 tickUpper, bytes32 salt) external pure returns (bytes32) {
-        return keccak256(abi.encodePacked(owner, tickLower, tickUpper, salt));
-    }
-
     // If the upper 12 bytes are non-zero, they will be zero-ed out
     // Therefore, fromId() and toId() are not inverses of each other
-    function fromId(uint256 id) external pure returns (Currency) {
-        return Currency.wrap(address(uint160(id)));
+    function fromId(uint256 id) external pure returns (Currency currency) {
+        currency = Currency.wrap(address(uint160(id)));
     }
 
     function transferEther(address payable to, uint256 amount) external {
@@ -81,7 +47,31 @@ contract HelperCVL {
         require(success);
     }
 
-    function fromPositionInfo(PositionInfo positionInfo) external returns (uint256) {
-        return PositionInfo.unwrap(positionInfo);
+    function poolId(PositionInfo info) external pure returns (bytes25 _poolId) {
+        _poolId = PositionInfoLibrary.poolId(info);
+    }
+
+    function tickLower(PositionInfo info) external pure returns (int24 _tickLower) {
+        _tickLower = PositionInfoLibrary.tickLower(info);
+    }
+
+    function tickUpper(PositionInfo info) external pure returns (int24 _tickUpper) {
+        _tickUpper = PositionInfoLibrary.tickUpper(info);
+    }
+
+    function hasSubscriber(PositionInfo info) external pure returns (bool _hasSubscriber) {
+        _hasSubscriber = PositionInfoLibrary.hasSubscriber(info);
+    }
+
+    function slot0SqrtPriceX96(Slot0 _packed) external pure returns (uint160 _sqrtPriceX96) {
+        _sqrtPriceX96 = Slot0Library.sqrtPriceX96(_packed);
+    }
+
+    function slot0Tick(Slot0 _packed) external pure returns (int24 _tick) {
+        _tick = Slot0Library.tick(_packed);
+    }
+
+    function castFromBytes32ToBytes25(bytes32 val) external pure returns (bytes25 ret) {
+        ret = bytes25(val);
     }
 }

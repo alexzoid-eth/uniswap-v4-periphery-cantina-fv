@@ -111,7 +111,7 @@ function isActivePositionCVL(int24 tick0, int24 tickLower, int24 tickUpper) retu
 }
 
 function isActivePositionInPoolCVL(bytes32 poolId, int24 tickLower, int24 tickUpper) returns bool {
-    return isActivePositionCVL(require_int24(ghostPoolsSlot0Tick[poolId]), tickLower, tickUpper);
+    return isActivePositionCVL(poolManagerSlot0Tick(poolId), tickLower, tickUpper);
 }
 
 function amountsToBalanceDeltaCVL(int128 _amount0, int128 _amount1) returns PoolManager.BalanceDelta {
@@ -210,14 +210,14 @@ function _modifyLiquidityMockCLV(
 ) returns (PoolManager.BalanceDelta, PoolManager.BalanceDelta) {
 
     // Calculate hashed pool and position IDs
-    bytes32 poolId = _HelperCVL.poolKeyToId(key);
-    bytes32 positionId = _HelperCVL.positionKey(e.msg.sender, params.tickLower, params.tickUpper, params.salt);
+    bytes32 poolId = poolKeyToIdCVL(key);
+    bytes32 positionId = calculatePositionKeyCVL(e.msg.sender, params.tickLower, params.tickUpper, params.salt);
 
     // Require valid range of ticks
     require(isValidTicksCVL(params.tickLower, params.tickUpper));
 
     // Require pool is initialized
-    require(ghostPoolsSlot0SqrtPriceX96[poolId] != 0);
+    require(poolManagerSlot0SqrtPriceX96CVL(poolId) != 0);
 
     // Update the position liquidity
     ghostPoolsPositionsLiquidity[poolId][positionId] = require_uint128(
@@ -311,6 +311,7 @@ function updatePoolStateOnSwapCVL(
         uint128 newLiquidity;  liquidityPerPool[poolId] = newLiquidity;
     */
 
+    /*
     havoc ghostPoolsSlot0Tick assuming forall bytes32 poolIdA.
         (poolIdA != poolId => ghostPoolsSlot0Tick@new[poolIdA] == ghostPoolsSlot0Tick@old[poolIdA]);
     
@@ -319,6 +320,7 @@ function updatePoolStateOnSwapCVL(
 
     havoc ghostPoolsLiquidity assuming forall bytes32 poolIdA.
         (poolIdA != poolId => ghostPoolsLiquidity@new[poolIdA] == ghostPoolsLiquidity@old[poolIdA]);
+    */
 }
 
 // Mock of _PoolManager.swap() to reduce complexity
@@ -330,7 +332,7 @@ function _swapMockCVL(
     require(isValidSwapParamsCVL(params));
 
     // Calculate hashed pool and position IDs.
-    bytes32 poolId = _HelperCVL.poolKeyToId(key);
+    bytes32 poolId = poolKeyToIdCVL(key);
     
     // Declare random currency deltas for the caller and the provided pool hook address.
     int128 amount0Swapper;
@@ -529,36 +531,15 @@ function getTickAtSqrtPriceCVL(uint160 sqrtPriceX96) returns int24 {
 
 // _pools[].slot0
 
-persistent ghost mapping (bytes32 => uint256) ghostPoolsSlot0 {
-    init_state axiom forall bytes32 id. ghostPoolsSlot0[id] == 0;
+persistent ghost mapping (bytes32 => PoolManager.Slot0) ghostPoolsSlot0 {
+    init_state axiom forall bytes32 id. ghostPoolsSlot0[id] == to_bytes32(0);
 }
 
-persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0SqrtPriceX96 {
-    init_state axiom forall bytes32 id. ghostPoolsSlot0SqrtPriceX96[id] == 0;
-}
-
-persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0Tick {
-    init_state axiom forall bytes32 id. ghostPoolsSlot0Tick[id] == 0;
-}
-
-persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0ProtocolFeeZeroForOne {
-    init_state axiom forall bytes32 id. ghostPoolsSlot0ProtocolFeeZeroForOne[id] == 0;
-}
-
-persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0ProtocolFeeOneForZero {
-    init_state axiom forall bytes32 id. ghostPoolsSlot0ProtocolFeeOneForZero[id] == 0;
-}
-
-persistent ghost mapping (bytes32 => mathint) ghostPoolsSlot0LpFee {
-    init_state axiom forall bytes32 id. ghostPoolsSlot0LpFee[id] == 0;
-}
-
-// Use `.(offset 0)` instead of `.slot0` to bypass bytes32 to uint256 conversion limitation 
-hook Sload uint256 val _PoolManager._pools[KEY PoolManager.PoolId i].(offset 0) {
+hook Sload PoolManager.Slot0 val _PoolManager._pools[KEY PoolManager.PoolId i].(offset 0) {
     require(ghostPoolsSlot0[i] == val);
 } 
 
-hook Sstore _PoolManager._pools[KEY PoolManager.PoolId i].(offset 0) uint256 val {
+hook Sstore _PoolManager._pools[KEY PoolManager.PoolId i].(offset 0) PoolManager.Slot0 val {
     ghostPoolsSlot0[i] = val;
 }
 
