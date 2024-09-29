@@ -1,5 +1,5 @@
 import "./setup/V4RouterBase.spec";
-import "./PoolManagerValidState.spec";
+import "./Common.spec";
 
 methods {
 
@@ -13,3 +13,11 @@ methods {
 
 // Check if there is at least one path to execute an external function without a revert 
 use builtin rule sanity filtered { f -> f.contract == currentContract }
+
+//
+// Common
+//
+
+// Any chance that non-view function modifies state (valuable when `memory` keyword mistakenly 
+//  was used instead of `storage` in setters among with event emitting)
+use rule chanceNonViewFunctionModifiesState;

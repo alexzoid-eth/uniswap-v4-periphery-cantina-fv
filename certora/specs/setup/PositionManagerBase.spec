@@ -48,57 +48,45 @@ ghost hashTypedDataEIP712(address,bytes32) returns bytes32 {
 
 // Mock notifier calls
 
-persistent ghost address ghostNotifierCalledSubscriber {
-    init_state axiom ghostNotifierCalledSubscriber == 0;
+persistent ghost mapping(address => mathint) ghostNotifierTokenId {
+    init_state axiom forall address subscriber. ghostNotifierTokenId[subscriber] == 0;
 }
 
-persistent ghost mathint ghostNotifierTokenId {
-    init_state axiom ghostNotifierTokenId == 0;
+persistent ghost mapping(address => int256) ghostNotifierLiquidityChange {
+    init_state axiom forall address subscriber. ghostNotifierLiquidityChange[subscriber] == 0;
 }
 
-persistent ghost int256 ghostNotifierLiquidityChange {
-    init_state axiom ghostNotifierLiquidityChange == 0;
+persistent ghost mapping(address => int256) ghostNotifierFeesAccrued {
+    init_state axiom forall address subscriber. ghostNotifierFeesAccrued[subscriber] == 0;
 }
 
-persistent ghost int256 ghostNotifierFeesAccrued {
-    init_state axiom ghostNotifierFeesAccrued == 0;
+persistent ghost mapping(address => address) ghostNotifierPreviousOwner {
+    init_state axiom forall address subscriber. ghostNotifierPreviousOwner[subscriber] == 0;
 }
 
-persistent ghost address ghostNotifierPreviousOwner {
-    init_state axiom ghostNotifierPreviousOwner == 0;
-}
-
-persistent ghost address ghostNotifierNewOwner {
-    init_state axiom ghostNotifierNewOwner == 0;
+persistent ghost mapping(address => address) ghostNotifierNewOwner {
+    init_state axiom forall address subscriber. ghostNotifierNewOwner[subscriber] == 0;
 }
 
 function notifySubscribeCVL(env e, address subscriber, mathint tokenId, bytes data) {
     require(data.length == 0);
-    require(subscriber != 0);
-    ghostNotifierCalledSubscriber = subscriber;
-    ghostNotifierTokenId = tokenId;
+    ghostNotifierTokenId[subscriber] = tokenId;
 }
 
 function notifyUnsubscribeCVL(env e, address subscriber, mathint tokenId)  {
-    require(subscriber != 0);
-    ghostNotifierCalledSubscriber = subscriber;
-    ghostNotifierTokenId = tokenId;
+    ghostNotifierTokenId[subscriber] = tokenId;
 }
 
 function notifyModifyLiquidityCVL(env e, address subscriber, mathint tokenId, int256 liquidityChange, PoolManager.BalanceDelta feesAccrued) {
-    require(subscriber != 0);
-    ghostNotifierCalledSubscriber = subscriber;
-    ghostNotifierTokenId = tokenId;
-    ghostNotifierLiquidityChange = liquidityChange;
-    ghostNotifierFeesAccrued = feesAccrued;
+    ghostNotifierTokenId[subscriber] = tokenId;
+    ghostNotifierLiquidityChange[subscriber] = liquidityChange;
+    ghostNotifierFeesAccrued[subscriber] = feesAccrued;
 }
 
 function notifyTransferCVL(env e, address subscriber, mathint tokenId, address previousOwner, address newOwner) {
-    require(subscriber != 0);
-    ghostNotifierCalledSubscriber = subscriber;
-    ghostNotifierTokenId = tokenId;
-    ghostNotifierPreviousOwner = previousOwner;
-    ghostNotifierNewOwner = newOwner;
+    ghostNotifierTokenId[subscriber] = tokenId;
+    ghostNotifierPreviousOwner[subscriber] = previousOwner;
+    ghostNotifierNewOwner[subscriber] = newOwner;
 }
 
 // SignatureVerification.verify() summary

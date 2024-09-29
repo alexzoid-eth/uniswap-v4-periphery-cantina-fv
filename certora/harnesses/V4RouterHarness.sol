@@ -19,57 +19,57 @@ contract V4RouterHarness is V4Router, ReentrancyLock {
 
     constructor(IPoolManager _poolManager) V4Router(_poolManager) {}
 
-    function swapExactIn(IV4Router.ExactInputParams calldata params) external payable isNotLocked {
+    function swapExactIn(IV4Router.ExactInputParams calldata params) external payable {
         // uint256 action = Actions.SWAP_EXACT_IN;
         _swapExactInput(params);
     }
 
-    function swapExactInSingle(IV4Router.ExactInputSingleParams calldata params) external payable isNotLocked {
+    function swapExactInSingle(IV4Router.ExactInputSingleParams calldata params) external payable {
         // uint256 action = Actions.SWAP_EXACT_IN_SINGLE;
         _swapExactInputSingle(params);
     }
 
-    function swapExactOut(IV4Router.ExactOutputParams calldata params) external payable isNotLocked {
+    function swapExactOut(IV4Router.ExactOutputParams calldata params) external payable {
         // uint256 action = Actions.SWAP_EXACT_OUT;
         _swapExactOutput(params);
     }
 
-    function swapExactOutSingle(IV4Router.ExactOutputSingleParams calldata params) external payable isNotLocked {
+    function swapExactOutSingle(IV4Router.ExactOutputSingleParams calldata params) external payable {
         // uint256 action = Actions.SWAP_EXACT_OUT_SINGLE;
         _swapExactOutputSingle(params);
     }
 
-    function settleTakePair(Currency settleCurrency, Currency takeCurrency) external payable isNotLocked {
+    function settleTakePair(Currency settleCurrency, Currency takeCurrency) external payable {
         // uint256 action = Actions.SETTLE_TAKE_PAIR;
         _settle(settleCurrency, msgSender(), _getFullDebt(settleCurrency));
         _take(takeCurrency, msgSender(), _getFullCredit(takeCurrency));
     }
 
-    function settleAll(Currency currency, uint256 maxAmount) external payable isNotLocked {
+    function settleAll(Currency currency, uint256 maxAmount) external payable {
         // uint256 action = Actions.SETTLE_ALL;
         uint256 amount = _getFullDebt(currency);
         if (amount > maxAmount) revert V4TooMuchRequested(maxAmount, amount);
         _settle(currency, msgSender(), amount);
     }
 
-    function takeAll(Currency currency, uint256 minAmount) external payable isNotLocked {
+    function takeAll(Currency currency, uint256 minAmount) external payable {
         // uint256 action = Actions.TAKE_ALL;
         uint256 amount = _getFullCredit(currency);
         if (amount < minAmount) revert V4TooLittleReceived(minAmount, amount);
         _take(currency, msgSender(), amount);
     }
 
-    function settle(Currency currency, uint256 amount, bool payerIsUser) external payable isNotLocked {
+    function settle(Currency currency, uint256 amount, bool payerIsUser) external payable {
         // uint256 action = Actions.SETTLE;
         _settle(currency, _mapPayer(payerIsUser), _mapSettleAmount(amount, currency));
     }
 
-    function take(Currency currency, address recipient, uint256 amount) external payable isNotLocked {
+    function take(Currency currency, address recipient, uint256 amount) external payable {
         // uint256 action = Actions.TAKE;
         _take(currency, _mapRecipient(recipient), _mapTakeAmount(amount, currency));
     }
 
-    function takePortion(Currency currency, address recipient, uint256 bips) external payable isNotLocked {
+    function takePortion(Currency currency, address recipient, uint256 bips) external payable {
         // uint256 action = Actions.TAKE_PORTION;
         _take(currency, _mapRecipient(recipient), _getFullCredit(currency).calculatePortion(bips));
     }

@@ -16,7 +16,7 @@ contract PositionManagerHarness is PositionManager {
         uint128 amount0Max,
         uint128 amount1Max,
         bytes calldata hookData
-    ) external payable isNotLocked {
+    ) external payable {
         // uint256 action = Actions.INCREASE_LIQUIDITY;
         _increase(tokenId, liquidity, amount0Max, amount1Max, hookData);               
     }
@@ -27,7 +27,7 @@ contract PositionManagerHarness is PositionManager {
         uint128 amount0Min,
         uint128 amount1Min,
         bytes calldata hookData
-    ) external payable isNotLocked {
+    ) external payable {
         // uint256 action = Actions.DECREASE_LIQUIDITY;
         _decrease(tokenId, liquidity, amount0Min, amount1Min, hookData);             
     }
@@ -41,7 +41,7 @@ contract PositionManagerHarness is PositionManager {
         uint128 amount1Max,
         address owner,
         bytes calldata hookData
-    )  external payable isNotLocked {
+    )  external payable {
         // uint256 action = Actions.MINT_POSITION;
         _mint(poolKey, tickLower, tickUpper, liquidity, amount0Max, amount1Max, _mapRecipient(owner), hookData);            
     }
@@ -51,43 +51,47 @@ contract PositionManagerHarness is PositionManager {
         uint128 amount0Min,
         uint128 amount1Min,
         bytes calldata hookData
-    ) external payable isNotLocked {
+    ) external payable {
         // uint256 action = Actions.BURN_POSITION;
         _burn(tokenId, amount0Min, amount1Min, hookData);
     }
 
-    function settlePair(Currency currency0, Currency currency1) external payable isNotLocked {
+    function settlePair(Currency currency0, Currency currency1) external payable {
         // uint256 action = Actions.SETTLE_PAIR;
         _settlePair(currency0, currency1);
     }
 
-    function takePair(Currency currency0, Currency currency1, address to) external payable isNotLocked {
+    function takePair(Currency currency0, Currency currency1, address to) external payable {
         // uint256 action = Actions.TAKE_PAIR;
         _takePair(currency0, currency1, to);
     }
 
-    function settle(Currency currency, uint256 amount, bool payerIsUser) external payable isNotLocked {
+    function settle(Currency currency, uint256 amount, bool payerIsUser) external payable {
         // uint256 action = Actions.SETTLE;
         _settle(currency, _mapPayer(payerIsUser), _mapSettleAmount(amount, currency));
     }
 
-    function take(Currency currency, address recipient, uint256 amount) external payable isNotLocked {
+    function take(Currency currency, address recipient, uint256 amount) external payable {
         // uint256 action = Actions.TAKE;
          _take(currency, _mapRecipient(recipient), _mapTakeAmount(amount, currency));
     }
 
-    function close(Currency currency) external payable isNotLocked {
+    function close(Currency currency) external payable {
         // uint256 action = Actions.CLOSE_CURRENCY;
         _close(currency);
     }
 
-    function clearOrTake(Currency currency, uint256 amountMax) external payable isNotLocked {
+    function clearOrTake(Currency currency, uint256 amountMax) external payable {
         // uint256 action = Actions.CLEAR_OR_TAKE;
         _clearOrTake(currency, amountMax);
     }
 
-    function sweep(Currency currency, address to) external payable isNotLocked {
+    function sweep(Currency currency, address to) external payable {
         // uint256 action = Actions.SWEEP;
         _sweep(currency, _mapRecipient(to));
+    }
+
+    function getFullDebt(Currency currency) external view returns (uint256 amount) {
+        amount = _getFullDebt(currency);
     }
 }

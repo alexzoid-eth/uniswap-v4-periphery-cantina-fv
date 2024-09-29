@@ -24,7 +24,8 @@ methods {
 }
 
 // Make a single mathint from two addresses
-definition hashIntCVL(address user, address token) returns mathint = (to_mathint(user) * 2^160 + to_mathint(token));
+definition hashIntCVL(address user, address token) returns mathint 
+    = (to_mathint(user) * 2^160 + to_mathint(token));
 
 function poolKeyVariablesToIdCVL(address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks) returns bytes32 {
     return keccak256(currency0, currency1, fee, tickSpacing, hooks);
@@ -68,6 +69,16 @@ function positionInfoPoolIdCVL(mathint tokenId) returns bytes25 {
     return _HelperCVL.poolId(ghostPositionInfo[tokenId]);
 }
 
+function poolMangerPoolIdCVL(mathint tokenId) returns bytes32 {
+    return poolKeyVariablesToIdCVL(
+        ghostPoolKeysCurrency0[positionInfoPoolIdCVL(tokenId)],
+        ghostPoolKeysCurrency1[positionInfoPoolIdCVL(tokenId)],
+        ghostPoolKeysFee[positionInfoPoolIdCVL(tokenId)],
+        ghostPoolKeysTickSpacing[positionInfoPoolIdCVL(tokenId)],
+        ghostPoolKeysHooks[positionInfoPoolIdCVL(tokenId)]
+    );
+}
+
 function poolManagerSlot0SqrtPriceX96CVL(bytes32 poolId) returns uint160 {
     return _HelperCVL.slot0SqrtPriceX96(ghostPoolsSlot0[poolId]);
 }
@@ -91,4 +102,18 @@ function poolManagerSlot0SqrtPriceX96ByTokenIdCVL(mathint tokenId) returns uint1
 
 function poolManagerSlot0Tick(bytes32 poolId) returns int24 {
     return _HelperCVL.slot0Tick(ghostPoolsSlot0[poolId]);
+}
+
+function poolManagerPoolPositionLiquidity(mathint tokenId) returns mathint {
+
+    bytes32 poolId = poolMangerPoolIdCVL(tokenId);
+
+    bytes32 positionId = calculatePositionKeyCVL(
+        _PositionManager, 
+        positionInfoTickLowerCVL(tokenId), 
+        positionInfoTickUpperCVL(tokenId), 
+        to_bytes32(require_uint256(tokenId))
+        );
+    
+    return ghostPoolsPositionsLiquidity[poolId][positionId];
 }

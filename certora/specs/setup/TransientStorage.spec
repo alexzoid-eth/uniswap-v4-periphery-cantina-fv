@@ -57,7 +57,15 @@ persistent ghost mathint ghostNonzeroDeltaCount {
 
 definition LOCKED_BY_SLOT() returns uint256 = 0x0aedd6bde10e3aa2adec092b02a3e3e805795516cda41f27aa145b8f300af87a;
 
-persistent ghost address ghostLocker;
+persistent ghost address ghostLocker {
+    init_state axiom ghostLocker == 0;
+    axiom ghostLocker != _PoolManager && ghostLocker != _PositionManager;
+}
+
+persistent ghost bool ghostLockerSet {
+    init_state axiom ghostLockerSet == false;
+}
+
 
 //
 // Global hooks
@@ -78,7 +86,10 @@ hook ALL_TSTORE(uint256 addr, uint256 val) {
         }  
     } else { // PositionManager
         if(addr == LOCKED_BY_SLOT()) {
-            ghostLocker = require_address(to_bytes32(val));
+            ghostLockerSet = (val != 0);
+            if(ghostLockerSet) {
+                ghostLocker = require_address(to_bytes32(val));
+            } 
         }
     }
 }
