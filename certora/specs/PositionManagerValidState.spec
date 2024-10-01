@@ -84,11 +84,11 @@ function requireValidStatePositionManagerPoolId(bytes25 poolId) {
     requireInvariant poolKeyMatchesInitializedPoolInPoolManager(poolId);
 }
 
-// The next token ID MUST always be greater than or equal to 1
+// PMV-01 The next token ID MUST always be greater than or equal to 1
 strong invariant validNextTokenId() 
     ghostNextTokenId >= 1;
 
-// Position information and token MUST NOT exist for token ID 0 or any future token IDs
+// PMV-02 Position information and token MUST NOT exist for token ID 0 or any future token IDs
 strong invariant noInfoForInvalidTokenIds(env e)
     forall mathint tokenId. tokenId == 0 || tokenId >= ghostNextTokenId 
         => IS_EMPTY_POSITION_INFO(tokenId) && ghostERC721OwnerOf[tokenId] == 0 {
@@ -98,7 +98,7 @@ strong invariant noInfoForInvalidTokenIds(env e)
         }
     }
 
-// Active position ticks MUST be within the valid range defined by TickMath
+// PMV-03 Active position ticks MUST be within the valid range defined by TickMath
 strong invariant validPositionTicks(env e, mathint tokenId)
     // Position not empty
     !IS_EMPTY_POSITION_INFO(tokenId) => (
@@ -112,7 +112,7 @@ strong invariant validPositionTicks(env e, mathint tokenId)
         }
     }
 
-// Active position MUST correspond minted token and vice versa
+// PMV-04 Active position MUST correspond minted token and vice versa
 strong invariant activePositionsMatchesToken(env e, mathint tokenId)
     // Token exists <=> Position exists
     ghostERC721OwnerOf[tokenId] != 0 <=> !IS_EMPTY_POSITION_INFO(tokenId) {
@@ -123,7 +123,7 @@ strong invariant activePositionsMatchesToken(env e, mathint tokenId)
         }
     }
 
-// Active position MUST correspond to valid pool key
+// PMV-05 Active position MUST correspond to valid pool key
 strong invariant activePositionMatchesPoolKey(env e, mathint tokenId)
     // Position is not empty
     !IS_EMPTY_POSITION_INFO(tokenId) 
@@ -156,7 +156,7 @@ strong invariant activePositionMatchesPoolKey(env e, mathint tokenId)
         }
     }
 
-// Active position must correspond to a initialized pool in PoolManager
+// PMV-06 Active position must correspond to a initialized pool in PoolManager
 strong invariant activePositionMatchesInitializedPoolInPoolManager(env e, mathint tokenId)
     // Active position
     !IS_EMPTY_POSITION_INFO(tokenId)
@@ -183,7 +183,7 @@ strong invariant activePositionMatchesInitializedPoolInPoolManager(env e, mathin
         }
     } 
 
-// Touched pool key must correspond to a initialized pool in PoolManager
+// PMV-07 Touched pool key must correspond to a initialized pool in PoolManager
 strong invariant poolKeyMatchesInitializedPoolInPoolManager(bytes25 poolId)
     // On UniswapV4, the minimum tick spacing is 1, which means that if the tick spacing is 0, 
     //  the pool key has not been set.
@@ -195,7 +195,7 @@ strong invariant poolKeyMatchesInitializedPoolInPoolManager(bytes25 poolId)
         }
     }
 
-// All poolKey fields must contain valid and consistent values
+// PMV-08 All poolKey fields must contain valid and consistent values
 strong invariant validPoolKeyStructure()
     // On UniswapV4, the minimum tick spacing is 1, which means that if the tick spacing is 0, 
     //  the pool key has not been set.
@@ -212,7 +212,7 @@ strong invariant validPoolKeyStructure()
             && ghostPoolKeysHooks[poolId] == 0
         );
 
-// The token ID in PositionManager always matches the position ID in PoolManager
+// PMV-09 The token ID in PositionManager always matches the position ID in PoolManager
 strong invariant tokenPositionIdAlignment(env e, mathint tokenId) 
     poolManagerPoolPositionLiquidity(tokenId) != 0 => tokenId != 0 
     filtered { 
@@ -225,7 +225,7 @@ strong invariant tokenPositionIdAlignment(env e, mathint tokenId)
         }
     }
 
-// The subscriber token ID always matches the token ID passed to notifier callbacks
+// PMV-10 The subscriber token ID always matches the token ID passed to notifier callbacks
 strong invariant subscriberTokenIdConsistency()
     forall mathint tokenId. ghostNotifierSubscriber[tokenId] != 0
         => tokenId == ghostNotifierTokenId[ghostNotifierSubscriber[tokenId]] 
@@ -234,7 +234,7 @@ strong invariant subscriberTokenIdConsistency()
         f -> IS_SUBSCRIBE_FUNCTION(f) == false
     }
 
-// Notifier callbacks are not called if nobody is subscribed to the token
+// PMV-11 Notifier callbacks are not called if nobody is subscribed to the token
 strong invariant notifierCallbacksUntouchedIfNoSubscriber(env e, mathint tokenId) 
     positionInfoHasSubscriberCVL(tokenId) == false => (
         ghostNotifierTokenId[ghostNotifierSubscriber[tokenId]] == 0 
@@ -252,7 +252,7 @@ strong invariant notifierCallbacksUntouchedIfNoSubscriber(env e, mathint tokenId
         }
     }
 
-// A subscription flag MUST be set when a valid subscriber address is present and vice versa
+// PMV-12 A subscription flag MUST be set when a valid subscriber address is present and vice versa
 strong invariant subscriberAddressSetWithFlag(env e, mathint tokenId)
     positionInfoHasSubscriberCVL(tokenId) <=> ghostNotifierSubscriber[tokenId] != 0 {
         preserved with (env eInv) {
@@ -261,7 +261,7 @@ strong invariant subscriberAddressSetWithFlag(env e, mathint tokenId)
         }
     }
 
-// Subscribers MUST only be set for existing token IDs
+// PMV-13 Subscribers MUST only be set for existing token IDs
 strong invariant subscribersForExistingTokensOnly(env e, mathint tokenId)
     ghostNotifierSubscriber[tokenId] != 0 
         => ghostERC721OwnerOf[tokenId] != 0 && !IS_EMPTY_POSITION_INFO(tokenId) {
@@ -271,7 +271,7 @@ strong invariant subscribersForExistingTokensOnly(env e, mathint tokenId)
         }
     }
 
-// Approvals for the zero address as owner are not allowed
+// PMV-14 Approvals for the zero address as owner are not allowed
 strong invariant noApprovalsForZeroAddress(env e)
     forall address spender. ghostERC721IsApprovedForAll[0][spender] == false {
         preserved with (env eInv) {
@@ -280,7 +280,7 @@ strong invariant noApprovalsForZeroAddress(env e)
         }
     }
 
-// The zero address MUST NOT have any token balance
+// PMV-15 The zero address MUST NOT have any token balance
 strong invariant zeroAddressHasNoBalance(env e)
     ghostERC721BalanceOf[0] == 0 {
         preserved with (env eInv) {
@@ -289,7 +289,7 @@ strong invariant zeroAddressHasNoBalance(env e)
         }
     }
 
-// Approved tokens MUST always correspond to existing token IDs
+// PMV-16 Approved tokens MUST always correspond to existing token IDs
 strong invariant getApprovedForExistingTokensOnly(env e)
     forall mathint tokenId. ghostERC721GetApproved[tokenId] != 0 
         => ghostERC721OwnerOf[tokenId] != 0 {

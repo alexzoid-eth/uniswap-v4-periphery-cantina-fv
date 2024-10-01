@@ -1,5 +1,4 @@
 import "./PositionManagerValidState.spec";
-import "./Common.spec";
 
 //
 // Sanity
@@ -8,19 +7,11 @@ import "./Common.spec";
 // Check if there is at least one path to execute an external function without a revert 
 use builtin rule sanity filtered { f -> f.contract == currentContract }
 
-//
-// Common
-//
-
-// Any chance that non-view function modifies state (valuable when `memory` keyword mistakenly 
-//  was used instead of `storage` in setters among with event emitting)
-use rule chanceNonViewFunctionModifiesState;
-
 // 
 // Variables Transition
 //
 
-// The nextTokenId value always increases monotonically
+// PM-01 The nextTokenId value always increases monotonically
 rule nextTokenIdMonotonicallyIncreasing(env e, method f, calldataarg args) {
 
     mathint before = ghostNextTokenId;
@@ -32,7 +23,7 @@ rule nextTokenIdMonotonicallyIncreasing(env e, method f, calldataarg args) {
     assert(before != after => after == before + 1);
 }
 
-// The ticks in positionInfo remain constant for a given tokenId, otherwise been cleared
+// PM-02 The ticks in positionInfo remain constant for a given tokenId, otherwise been cleared
 rule positionTicksUnchanged(env e, method f, calldataarg args, uint256 tokenId) {
 
     // Active position MUST correspond minted token and vice versa
@@ -56,7 +47,7 @@ rule positionTicksUnchanged(env e, method f, calldataarg args, uint256 tokenId) 
     ));
 }
 
-// The poolId in positionInfo remains constant for a given tokenId, otherwise been cleared
+// PM-03 The poolId in positionInfo remains constant for a given tokenId, otherwise been cleared
 rule positionPoolIdUnchanged(env e, method f, calldataarg args, uint256 tokenId) {
 
     // Active position MUST correspond minted token and vice versa
@@ -76,7 +67,7 @@ rule positionPoolIdUnchanged(env e, method f, calldataarg args, uint256 tokenId)
     ));
 }
 
-// A subscriber for a tokenId can only be set to a non-zero address once or unset to zero
+// PM-04 A subscriber for a tokenId can only be set to a non-zero address once or unset to zero
 rule subscriberImmutability(env e, method f, calldataarg args, uint256 tokenId) {
 
     address before = ghostNotifierSubscriber[tokenId];
@@ -90,7 +81,7 @@ rule subscriberImmutability(env e, method f, calldataarg args, uint256 tokenId) 
     ));
 }
 
-// Once a nonce is set (used), it cannot be cleared
+// PM-05 Once a nonce is set (used), it cannot be cleared
 rule noncePermanence(env e, method f, calldataarg args, address owner, uint256 word) {
 
     mathint before = ghostNonces[owner][word];
@@ -106,7 +97,7 @@ rule noncePermanence(env e, method f, calldataarg args, address owner, uint256 w
 // State transition
 // 
 
-// nextTokenId updated if and only if a new token is minted
+// PM-06 nextTokenId updated if and only if a new token is minted
 rule nextTokenIdSyncWithMint(env e, method f, calldataarg args) {
 
     mathint nextTokenIdBefore = ghostNextTokenId;
@@ -127,7 +118,7 @@ rule nextTokenIdSyncWithMint(env e, method f, calldataarg args) {
     satisfy((ownerBefore == 0 && ownerAfter != 0) => nextTokenIdBefore != nextTokenIdAfter);
 }
 
-// A new token is minted if and only if a new position is created, and burned when position is cleared
+// PM-07 A new token is minted if and only if a new position is created, and burned when position is cleared
 rule tokenMintBurnPositionSync(env e, method f, calldataarg args) {
 
     mathint tokenId = ghostNextTokenId;
@@ -154,7 +145,7 @@ rule tokenMintBurnPositionSync(env e, method f, calldataarg args) {
     satisfy((ownerBefore != 0 && ownerAfter == 0) => (positionBefore != EMPTY_POSITION_INFO() && positionWasChanged));
 }
 
-// Minting increase position liquidity while burning decreases position liquidity in PoolManager
+// PM-08 Minting increase position liquidity while burning decreases position liquidity in PoolManager
 rule liquidityChangeOnMintBurn(env e, method f, calldataarg args, mathint tokenId) {
 
     // Assume PositionManager valid state invariants 
@@ -188,7 +179,7 @@ rule liquidityChangeOnMintBurn(env e, method f, calldataarg args, mathint tokenI
     satisfy((ownerBefore != 0 && ownerAfter == 0) => poolsPositionsLiquidityBefore >= poolsPositionsLiquidityAfter);
 }
 
-// The poolKey associated with a poolId remains constant once set, and could be set only when tickspacing is zero
+// PM-09 The poolKey associated with a poolId remains constant once set, and could be set only when tickspacing is zero
 rule poolKeyImmutability(env e, method f, calldataarg args, bytes25 poolId) {
 
     // PookKey has a valid structure (tick spacing != 0 etc)
@@ -250,7 +241,7 @@ rule poolKeyImmutability(env e, method f, calldataarg args, bytes25 poolId) {
     ));    
 }
 
-// A pool key can only be added when a new token is minted
+// PM-10 A pool key can only be added when a new token is minted
 rule poolKeyAdditionOnlyWithNewToken(env e, method f, calldataarg args, mathint tokenId) {
 
     // Assume PositionManager valid state invariants 
@@ -298,7 +289,7 @@ rule poolKeyAdditionOnlyWithNewToken(env e, method f, calldataarg args, mathint 
     );
 }
 
-// Notifier callbacks execute only when token owner or liquidity change
+// PM-11 Notifier callbacks execute only when token owner or liquidity change
 rule notifierCallbacksOnlyOnOwnerOrLiquidityChange(env e, method f, calldataarg args, mathint tokenId) {
 
     // Assume PositionManager valid state invariants 
@@ -388,7 +379,7 @@ rule notifierCallbacksOnlyOnOwnerOrLiquidityChange(env e, method f, calldataarg 
         ));
 }
 
-// Initiates tokens receive from pool manager only
+// PM-12 Initiates tokens receive from pool manager only
 rule initiatesTokensReceiveFromPoolManagerOnly(env e, method f, calldataarg args) {
 
     // Assume PositionManager valid state invariants 
@@ -409,7 +400,7 @@ rule initiatesTokensReceiveFromPoolManagerOnly(env e, method f, calldataarg args
     satisfy(posAfter > posBefore => (posAfter - posBefore == pmBefore - pmAfter));
 }
 
-// Never receive native tokens from pool manager
+// PM-13 Never receive native tokens from pool manager
 rule neverReceiveNativeTokensFromPoolManager(env e, method f, calldataarg args) {
 
     // Assume PositionManager valid state invariants 
@@ -429,7 +420,7 @@ rule neverReceiveNativeTokensFromPoolManager(env e, method f, calldataarg args) 
     assert(posNativeAfter > posNativeBefore => pmNativeBefore == pmNativeAfter);
 }
 
-// Pair of tokens settles from locker only and in full amount owed by this contract
+// PM-14 Pair of tokens settles from locker only and in full amount owed by this contract
 rule pairOfTokensSettlesFromLockerOnlyAndInFullAmount(env e, method f, calldataarg args) {
 
     // Assume PositionManager valid state invariants 
@@ -486,7 +477,7 @@ rule pairOfTokensSettlesFromLockerOnlyAndInFullAmount(env e, method f, calldataa
 // High-Level
 //
 
-// Only the owner or approved addresses can modify liquidity
+// PM-15 Only the owner or approved addresses can modify liquidity
 rule onlyTokenOwnerOrApprovedCanModifyLiquidity(env e, method f, calldataarg args, mathint tokenId) {
 
     // Assume PositionManager valid state invariants 
@@ -520,7 +511,7 @@ rule onlyTokenOwnerOrApprovedCanModifyLiquidity(env e, method f, calldataarg arg
     );
 }
 
-// Only the owner or approved addresses can transfer token
+// PM-16 Only the owner or approved addresses can transfer token
 rule onlyTokenOwnerOrApprovedCanTransferToken(env e, method f, calldataarg args, mathint tokenId) {
 
     // Assume PositionManager valid state invariants 
@@ -547,7 +538,7 @@ rule onlyTokenOwnerOrApprovedCanTransferToken(env e, method f, calldataarg args,
     );
 }
 
-// Sweep is the only way to transfer tokens outside except PoolManager
+// PM-17 Sweep is the only way to transfer tokens outside except PoolManager
 rule sweepOnlyWayToTransferTokensOutsideExceptPoolManager(env e, method f, calldataarg args)
     // Skip sweep() call
     filtered { f -> IS_SWEEP_FUNCTION(f) == false } {
@@ -588,7 +579,7 @@ rule sweepOnlyWayToTransferTokensOutsideExceptPoolManager(env e, method f, calld
 // Unit Tests
 //
 
-// Ensures closing position affects the balance of the locker
+// PM-18 Ensures closing position affects the balance of the locker
 rule closeAffectBalanceOfLocker(env e, address token) {
 
     // Assume PositionManager valid state invariants 
@@ -613,7 +604,7 @@ rule closeAffectBalanceOfLocker(env e, address token) {
     satisfy(deltaBefore < 0 ? balanceAfter < balanceBefore : balanceAfter >= balanceBefore);
 }
 
-// Sweep must output currency
+// PM-19 Sweep must output currency
 rule sweepMustOutputCurrency(env e, address token, address to) {
 
     // Assume PositionManager valid state invariants 
@@ -651,7 +642,7 @@ rule sweepMustOutputCurrency(env e, address token, address to) {
     satisfy(toNativeAfter >= toNativeBefore => (toNativeAfter - toNativeBefore == posNativeBefore - posNativeAfter));
 }
 
-// Any valid nonce can be used once
+// PM-20 Any valid nonce can be used once
 rule nonceUniqueUsage(env e, uint256 nonce) {
 
     // Bypass revert when msg.sender doesn't have enough native tokens
@@ -670,7 +661,7 @@ rule nonceUniqueUsage(env e, uint256 nonce) {
     satisfy(forall address owner. forall uint256 word. ghostNonces[owner][word] != 0);
 }
 
-// A nonce cannot be successfully used more than once
+// PM-21 A nonce cannot be successfully used more than once
 rule nonceSingleUse(env e, uint256 nonce) {
 
     // Clear all nonces 
