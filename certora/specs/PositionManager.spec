@@ -675,3 +675,36 @@ rule nonceSingleUse(env e, uint256 nonce) {
 
     assert(!reverted1 => reverted2);
 }
+
+// PM-22 The destination address can always receive the token during a transfer
+rule destinationCanReceiveToken(env e, address from, address to, uint256 id) {
+   
+    // Assume PositionManager valid state invariants 
+    requireValidStatePositionManagerEnv(e);
+   
+    transferFrom(e, from, to, id);
+   
+    assert(ghostERC721OwnerOf[id] == to);
+    satisfy(ghostERC721OwnerOf[id] == to);
+}
+
+// PM-23 The owner always receives the newly minted token
+rule ownerReceivesNewToken(
+    env e, 
+    PoolManager.PoolKey poolKey, 
+    int24 tickLower, 
+    int24 tickUpper, 
+    uint256 liquidity, 
+    uint128 amount0Max, 
+    uint128 amount1Max, 
+    address owner, 
+    bytes hookData
+    ) {
+
+    mathint id = ghostNextTokenId;    
+    
+    mintPosition(e, poolKey, tickLower, tickUpper, liquidity, amount0Max, amount1Max, owner, hookData);
+    
+    assert(ghostERC721OwnerOf[id] == owner);
+    satisfy(ghostERC721OwnerOf[id] == owner);
+}

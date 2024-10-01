@@ -80,4 +80,6 @@ These properties verify specific, isolated behaviors:
 | [PM-18](./specs/PositionManager.spec#L582) | Closing a position affects the balance of the locker, ensuring proper settlement of assets | Unit Test |
 | [PM-19](./specs/PositionManager.spec#L607) | The sweep function must successfully output the specified currency to the designated recipient | Unit Test |
 | [PM-20](./specs/PositionManager.spec#L645) | Any valid nonce can be used exactly once, preventing replay attacks | Unit Test |
-| [PM-21](./specs/PositionManager.spec#L664) | A nonce cannot be successfully used more than once, further reinforcing protection against replay attacks | Unit Test |
+| [PM-21](./specs/PositionManager.spec#L664) | A nonce cannot be successfully used more than once | Unit Test |
+| [PM-22](./specs/PositionManager.spec#L679) | The destination address can always receive the token during a transfer | Unit Test |
+| [PM-23](./specs/PositionManager.spec#L691) | The owner always receives the newly minted token | Unit Test |
