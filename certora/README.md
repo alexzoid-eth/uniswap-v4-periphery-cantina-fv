@@ -45,7 +45,7 @@ These properties focus on how individual variables change over time:
 | [PM-04](./specs/PositionManager.spec#L70) | A subscriber for a tokenId can only be set to a non-zero address once, and can only be unset to zero address afterwards | Variable Transition |
 | [PM-05](./specs/PositionManager.spec#L84) | Once a nonce is set (used), it remains set and cannot be cleared or reused | Variable Transition |
 
-## State Transition
+### State Transition
 
 These properties describe how the overall state of the contract changes:
 
@@ -61,7 +61,7 @@ These properties describe how the overall state of the contract changes:
 | [PM-13](./specs/PositionManager.spec#L403) | The contract never receives native tokens from the pool manager, ensuring proper asset segregation | State Transition |
 | [PM-14](./specs/PositionManager.spec#L423) | Pair of tokens can only be settled from the locker and must be settled for the full amount owed by the contract | State Transition |
 
-## High Level
+### High Level
 
 These properties describe important high-level behaviors of the contract:
 
@@ -71,7 +71,7 @@ These properties describe important high-level behaviors of the contract:
 | [PM-16](./specs/PositionManager.spec#L514) | Only the token owner or approved addresses can transfer a token, maintaining ownership integrity | High Level |
 | [PM-17](./specs/PositionManager.spec#L541) | Sweep is the only way to transfer tokens outside the contract, except for interactions with the PoolManager, preventing unauthorized token outflows | High Level |
 
-## Unit Test
+### Unit Test
 
 These properties verify specific, isolated behaviors:
 
