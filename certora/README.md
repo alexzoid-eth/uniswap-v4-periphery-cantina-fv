@@ -82,4 +82,3 @@ These properties verify specific, isolated behaviors:
 | [PM-20](./specs/PositionManager.spec#L645) | Any valid nonce can be used exactly once, preventing replay attacks | Unit Test |
 | [PM-21](./specs/PositionManager.spec#L664) | A nonce cannot be successfully used more than once | Unit Test |
 | [PM-22](./specs/PositionManager.spec#L679) | The destination address can always receive the token during a transfer | Unit Test |
-| [PM-23](./specs/PositionManager.spec#L691) | The owner always receives the newly minted token | Unit Test |
