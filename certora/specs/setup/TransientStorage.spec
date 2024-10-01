@@ -8,7 +8,7 @@ methods {
         => computeSlotCVL(target, currency);
 }
 
-persistent ghost mapping (address => mapping(address => int256)) ghostCurrencyDelta;
+persistent ghost mapping (address => mapping(address => int128)) ghostCurrencyDelta;
 
 ghost address _ghostLastTarget;
 ghost address _ghostLastCurrency;
@@ -74,7 +74,7 @@ persistent ghost bool ghostLockerSet {
 hook ALL_TSTORE(uint256 addr, uint256 val) {
     if(executingContract == _PoolManager) {
         if(to_bytes32(addr) == _ghostLastSlot) {
-            ghostCurrencyDelta[_ghostLastTarget][_ghostLastCurrency] = require_int256(val);
+            ghostCurrencyDelta[_ghostLastTarget][_ghostLastCurrency] = require_int128(val);
         } else if (addr == CURRENCY_SLOT()) {
             ghostSyncedCurrency = require_address(to_bytes32(val));
         } else if (addr == RESERVES_OF_SLOT()) {
@@ -97,7 +97,7 @@ hook ALL_TSTORE(uint256 addr, uint256 val) {
 hook ALL_TLOAD(uint256 addr) uint256 val {
     if(executingContract == _PoolManager) {
         if(to_bytes32(addr) == _ghostLastSlot) {
-            require(ghostCurrencyDelta[_ghostLastTarget][_ghostLastCurrency] == require_int256(val));
+            require(ghostCurrencyDelta[_ghostLastTarget][_ghostLastCurrency] == require_int128(val));
         } else if (addr == CURRENCY_SLOT()) {
             require(ghostSyncedCurrency == require_address(to_bytes32(val)));
         } else if (addr == RESERVES_OF_SLOT()) {

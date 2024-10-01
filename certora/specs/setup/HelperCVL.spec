@@ -18,6 +18,7 @@ methods {
     function _HelperCVL.slot0SqrtPriceX96(PoolManager.Slot0 _packed) external returns (uint160) envfree;
     function _HelperCVL.slot0Tick(PoolManager.Slot0 _packed) external returns (int24) envfree;
     function _HelperCVL.castFromBytes32ToBytes25(bytes32 val) external returns (bytes25) envfree;
+    function _HelperCVL.decodeSettleParams(bytes params) external returns (HelperCVL.Currency, uint256, bool) envfree;
 
     function _.toId(PoolManager.PoolKey memory poolKey) internal
         => poolKeyToPoolIdCVL(poolKey) expect PoolManager.PoolId ALL;

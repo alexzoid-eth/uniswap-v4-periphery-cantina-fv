@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {PositionManager, PositionInfo, IPoolManager, IAllowanceTransfer} from "src/PositionManager.sol";
+import {Actions} from "src/libraries/Actions.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 
@@ -66,9 +67,9 @@ contract PositionManagerHarness is PositionManager {
         _takePair(currency0, currency1, to);
     }
 
-    function settle(Currency currency, uint256 amount, bool payerIsUser) external payable {
-        // uint256 action = Actions.SETTLE;
-        _settle(currency, _mapPayer(payerIsUser), _mapSettleAmount(amount, currency));
+    function handleActionSettle(bytes calldata params) external payable {
+        uint256 action = Actions.SETTLE;
+        _handleAction(action, params);
     }
 
     function take(Currency currency, address recipient, uint256 amount) external payable {

@@ -148,7 +148,7 @@ function requireValidEnvCVL(env e) {
 }
 
 function isValidEnvCVL(env e) returns bool {
-    return (e.msg.sender != 0);
+    return (e.msg.sender != 0 && e.msg.sender != 1 && e.msg.sender != 2);
 }
 
 function isValidKeyCVL(PoolManager.PoolKey poolKey) returns bool {

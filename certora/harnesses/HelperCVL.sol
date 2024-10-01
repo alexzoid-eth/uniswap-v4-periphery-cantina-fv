@@ -9,9 +9,12 @@ import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
 import {PositionInfoLibrary, PositionInfo} from "src/libraries/PositionInfoLibrary.sol";
 import {Slot0, Slot0Library} from "@uniswap/v4-core/src/types/Slot0.sol";
+import {CalldataDecoder} from "src/libraries/CalldataDecoder.sol";
 
 contract HelperCVL {
     
+    using CalldataDecoder for bytes;
+
     function wrapToPoolId(bytes32 _id) external pure returns (PoolId) {
         return PoolId.wrap(_id);
     }
@@ -36,11 +39,6 @@ contract HelperCVL {
     // Therefore, fromId() and toId() are not inverses of each other
     function fromId(uint256 id) external pure returns (Currency currency) {
         currency = Currency.wrap(address(uint160(id)));
-    }
-
-    function transferEther(address payable to, uint256 amount) external {
-        (bool success, ) = to.call{value: amount}(""); 
-        require(success);
     }
 
     function assertOnFailure(bool success) external {
@@ -73,5 +71,9 @@ contract HelperCVL {
 
     function castFromBytes32ToBytes25(bytes32 val) external pure returns (bytes25 ret) {
         ret = bytes25(val);
+    }
+
+    function decodeSettleParams(bytes calldata params) external pure returns (Currency currency, uint256 amount, bool payerIsUser) {
+        (currency, amount, payerIsUser) = params.decodeCurrencyUint256AndBool();
     }
 }

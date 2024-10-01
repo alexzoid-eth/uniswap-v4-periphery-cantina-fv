@@ -31,7 +31,7 @@ function isValidTokenCVL(address token) returns bool {
 persistent ghost mapping(address => mapping(address => mathint)) ghostERC20Balances {
     init_state axiom forall address token. forall address owner. ghostERC20Balances[token][owner] == 0;
     axiom forall address token. forall address owner. ghostERC20Balances[token][owner] >= 0 
-        && ghostERC20Balances[token][owner] <= max_uint256;
+        && ghostERC20Balances[token][owner] <= max_uint128;
 }
 
 // Ghost copy of `allowance`
@@ -40,7 +40,7 @@ persistent ghost mapping(address => mapping(address => mapping(address => mathin
     init_state axiom forall address token. forall address owner. forall address spender. 
         ghostERC20Allowances[token][owner][spender] == 0;
     axiom forall address token. forall address owner. forall address spender. 
-        ghostERC20Allowances[token][owner][spender] >= 0 && ghostERC20Allowances[token][owner][spender] <= max_uint256;
+        ghostERC20Allowances[token][owner][spender] >= 0 && ghostERC20Allowances[token][owner][spender] <= max_uint128;
 }
 
 // Balance of owner
@@ -66,9 +66,13 @@ function transferFromCVL(env e, address token, address from, address to, uint256
     // Support only NATIVE, ERC20A, ERC20B or ERC20C currencies
     require(isValidTokenCVL(token));
 
+    // Safe assumptions about transferFrom()
+    require(from != to);
+
     if(token == NATIVE_CURRENCY()) {
         assert(transferFrom == false, "transferFrom() is not allowed for native currency");
-        _HelperCVL.transferEther(e, to, amount);
+        require(nativeBalances[from] == nativeBalances[from] - amount);
+        require(nativeBalances[to] == nativeBalances[to] + amount);
     } else {
         if(transferFrom) {
             if(ghostERC20Allowances[token][from][to] < amount) return false;
