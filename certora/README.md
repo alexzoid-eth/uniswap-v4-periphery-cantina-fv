@@ -10,6 +10,12 @@
 
 ## PositionManager
 
+### Read bugs
+
+| Property | Description | Category |
+| --- | --- | --- |
+| [PMR-01](./specs/PositionManagerViolated.spec) | Verifies that when settling with the CONTRACT_BALANCE flag, the action uses the contract's entire balance | High Level |
+
 ### Valid State
 
 The properties below are categorized as valid state properties, which can be used to assume a valid storage state in other high-level properties.
