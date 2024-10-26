@@ -10,7 +10,7 @@
 
 ## PositionManager
 
-### Read bugs
+### Real bugs
 
 | Property | Description | Category |
 | --- | --- | --- |
